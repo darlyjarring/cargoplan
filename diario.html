@@ -2,38 +2,52 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Editor Pro | Cargo Plan</title>
+    <title>Sistema de Distribución | Cargo Plan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-size: 12px; background: #f4f4f4; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        .toolbar { background: #1d6f42; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; }
-        .grid-container { flex-grow: 1; overflow: auto; background: white; }
-        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
-        th { background: #e2e2e2; position: sticky; top: 0; z-index: 10; border: 1px solid #bbb; padding: 5px; text-align: center; }
-        td { border: 1px solid #ccc; padding: 3px 6px; white-space: nowrap; outline: none; text-overflow: ellipsis; overflow: hidden; }
-        td:focus { background: #fffde7 !important; border: 2px solid #1d6f42 !important; }
-        tr:nth-child(even) { background: #f9f9f9; }
+        body { font-size: 11px; height: 100vh; display: flex; flex-direction: column; overflow: hidden; background: #e9ecef; }
+        .navbar-excel { background: #1d6f42; color: white; padding: 5px 15px; }
+        
+        /* Contenedor de alta velocidad */
+        .grid-wrapper { flex: 1; overflow: auto; background: white; border-top: 2px solid #ccc; }
+        
+        table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
+        th { 
+            background: #f1f3f4; border: 0.5px solid #ccc; padding: 4px; 
+            position: sticky; top: 0; z-index: 20; font-weight: bold; text-align: center;
+        }
+        td { 
+            border: 0.5px solid #ddd; padding: 2px 5px; white-space: nowrap; 
+            overflow: hidden; text-overflow: ellipsis; outline: none;
+        }
+        
+        /* Foco estilo Excel */
+        td:focus { border: 2px solid #1a73e8 !important; background: #e8f0fe !important; z-index: 10; }
+        tr:hover { background-color: #f8f9fa; }
+        
+        .btn-sm { font-size: 10px; padding: 2px 8px; }
     </style>
 </head>
 <body>
 
-<div class="toolbar">
+<div class="navbar-excel d-flex justify-content-between align-items-center">
     <div>
-        <i class="bi bi-grid-3x3"></i> <b><span id="txtDia">---</span></b> | SEMANA: <span id="txtSem">---</span>
+        <i class="bi bi-calendar-check"></i> <b><span id="txtDia">...</span></b> 
+        <span class="ms-3 badge bg-light text-dark">SEM: <span id="txtSem">0</span></span>
     </div>
     <div class="d-flex gap-2">
-        <input type="file" id="upExcel" class="d-none" accept=".xlsx, .xls">
-        <button class="btn btn-light btn-sm" onclick="document.getElementById('upExcel').click()"><i class="bi bi-file-excel"></i> Importar</button>
-        <button class="btn btn-light btn-sm" onclick="agregarFila()"><i class="bi bi-plus-circle"></i> Fila</button>
-        <button class="btn btn-warning btn-sm fw-bold" id="btnGrabar" onclick="grabarTodo()"> <i class="bi bi-save"></i> GRABAR SEMANA</button>
+        <input type="file" id="fExcel" class="d-none" accept=".xlsx, .xls">
+        <button class="btn btn-light btn-sm" onclick="document.getElementById('fExcel').click()"><i class="bi bi-file-earmark-excel"></i> Importar</button>
+        <button class="btn btn-light btn-sm" onclick="nuevaFila()"><i class="bi bi-plus"></i> Fila</button>
+        <button class="btn btn-warning btn-sm fw-bold" id="btnGrabar" onclick="grabarConsolidado()"><i class="bi bi-save"></i> GRABAR SEMANA</button>
     </div>
 </div>
 
-<div class="grid-container">
-    <table id="tblData">
+<div class="grid-wrapper">
+    <table id="miTabla">
         <thead><tr id="hRow"></tr></thead>
         <tbody id="bBody"></tbody>
     </table>
@@ -48,69 +62,79 @@ const SEMANA = params.get('semana') || '0';
 document.getElementById('txtDia').innerText = DIA.toUpperCase();
 document.getElementById('txtSem').innerText = SEMANA;
 
-const columnas = ["EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", "CONTENEDOR", "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"];
-document.getElementById('hRow').innerHTML = columnas.map(c => `<th style="width:130px">${c}</th>`).join('');
+const titulos = ["EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", "CONTENEDOR", "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"];
+document.getElementById('hRow').innerHTML = titulos.map(t => `<th style="width:120px">${t}</th>`).join('');
 
-// --- CARGA RÁPIDA (FOR NEXT MEMORY) ---
-document.getElementById('upExcel').addEventListener('change', function(e) {
+// --- CARGA DE DATOS ULTRA RÁPIDA ---
+document.getElementById('fExcel').addEventListener('change', function(e) {
     const reader = new FileReader();
     reader.onload = function(evt) {
-        const wb = XLSX.read(new Uint8Array(evt.target.result), {type: 'array'});
+        const wb = XLSX.read(new Uint8Array(evt.target.result), {type: 'array', cellDates: true});
         const ws = wb.Sheets[wb.SheetNames.find(n => n.toUpperCase().includes(DIA.toUpperCase())) || wb.SheetNames[0]];
-        const data = XLSX.utils.sheet_to_json(ws, {header: 1});
+        const raw = XLSX.utils.sheet_to_json(ws, {header: 1});
 
-        if(data.length > 0) {
-            const headers = data[0].map(h => String(h || "").toUpperCase().trim());
-            const idxs = columnas.map(c => headers.findIndex(h => h.includes(c.substring(0,4))));
+        if(raw.length > 0) {
+            const headRaw = raw[0].map(h => String(h || "").toUpperCase().trim());
+            const idxs = titulos.map(t => headRaw.findIndex(h => h.includes(t.substring(0,4))));
             
-            let html = "";
-            for(let i=1; i<data.length; i++) {
-                if(!data[i][idxs[0]] && !data[i][idxs[5]]) continue; // Evitar basura
-                html += `<tr>${idxs.map(ci => `<td contenteditable="true">${data[i][ci] || ""}</td>`).join('')}</tr>`;
+            let buffer = "";
+            for(let i=1; i < raw.length; i++) {
+                if(!raw[i][idxs[5]]) continue; // Si no hay Booking, saltar
+                buffer += "<tr>";
+                for(let j=0; j < idxs.length; j++) {
+                    let val = idxs[j] !== -1 ? raw[i][idxs[j]] : "";
+                    // Corrección de formato de fecha/objetos
+                    if(val instanceof Date) val = val.toLocaleDateString();
+                    buffer += `<td contenteditable="true">${val || ""}</td>`;
+                }
+                buffer += "</tr>";
             }
-            document.getElementById('bBody').innerHTML = html;
-            initNavegacion();
+            document.getElementById('bBody').innerHTML = buffer;
+            document.getElementById('btnGrabar').disabled = false;
         }
     };
     reader.readAsArrayBuffer(e.target.files[0]);
 });
 
-function agregarFila() {
-    const tr = document.createElement('tr');
-    tr.innerHTML = columnas.map(() => `<td contenteditable="true"></td>`).join('');
-    document.getElementById('bBody').appendChild(tr);
-    initNavegacion();
+// --- SISTEMA DE NAVEGACIÓN (FLECHAS) ---
+document.getElementById('bBody').addEventListener('keydown', function(e) {
+    const cell = e.target;
+    if (cell.tagName !== 'TD') return;
+
+    const col = cell.cellIndex;
+    const row = cell.parentElement.rowIndex - 1;
+    const body = this;
+
+    switch(e.key) {
+        case "ArrowRight": 
+            if(window.getSelection().anchorOffset === cell.innerText.length) {
+                e.preventDefault(); cell.nextElementSibling?.focus(); 
+            }
+            break;
+        case "ArrowLeft": 
+            if(window.getSelection().anchorOffset === 0) {
+                e.preventDefault(); cell.previousElementSibling?.focus(); 
+            }
+            break;
+        case "ArrowDown": case "Enter": 
+            e.preventDefault(); body.rows[row + 1]?.cells[col]?.focus(); break;
+        case "ArrowUp": 
+            e.preventDefault(); body.rows[row - 1]?.cells[col]?.focus(); break;
+    }
+});
+
+function nuevaFila() {
+    const row = document.createElement('tr');
+    row.innerHTML = titulos.map(() => `<td contenteditable="true"></td>`).join('');
+    document.getElementById('bBody').appendChild(row);
 }
 
-// --- NAVEGACIÓN TIPO EXCEL (FLECHAS Y ENTER) ---
-function initNavegacion() {
-    const cells = document.querySelectorAll('td[contenteditable="true"]');
-    cells.forEach(cell => {
-        cell.onkeydown = function(e) {
-            const col = this.cellIndex;
-            const row = this.parentElement.rowIndex - 1;
-            const tbody = document.getElementById('bBody');
-
-            if (e.key === "ArrowRight") { e.preventDefault(); this.nextElementSibling?.focus(); }
-            if (e.key === "ArrowLeft") { e.preventDefault(); this.previousElementSibling?.focus(); }
-            if (e.key === "ArrowDown" || e.key === "Enter") { 
-                e.preventDefault(); 
-                tbody.rows[row + 1]?.cells[col]?.focus(); 
-            }
-            if (e.key === "ArrowUp") { 
-                e.preventDefault(); 
-                tbody.rows[row - 1]?.cells[col]?.focus(); 
-            }
-        };
-    });
-}
-
-async function grabarTodo() {
+// --- GRABADO CONSOLIDADO ---
+async function grabarConsolidado() {
     const btn = document.getElementById('btnGrabar');
     btn.disabled = true;
-    btn.innerText = "PROCESANDO...";
-
-    const rows = Array.from(document.querySelectorAll('#bBody tr')).map(tr => {
+    
+    const rowsArr = Array.from(document.querySelectorAll('#bBody tr')).map(tr => {
         const c = tr.cells;
         return {
             semana: SEMANA, dia: DIA,
@@ -123,22 +147,17 @@ async function grabarTodo() {
     });
 
     try {
-        // 1. Guardar en tabla Diaria
-        await _supabase.from('distribucion_diaria').delete().match({semana: SEMANA, dia: DIA});
-        await _supabase.from('distribucion_diaria').insert(rows);
-
-        // 2. Sincronizar con SABANA SEMANAL (Consolidado)
-        // Nota: Aquí se ordenarán por booking automáticamente al consultar
-        await _supabase.from('sabana_semanal').delete().match({semana: SEMANA, dia: DIA});
-        const { error } = await _supabase.from('sabana_semanal').insert(rows);
-
-        if (error) throw error;
-        alert("Sincronizado con Éxito en Sábana Semanal");
+        // Guardamos en ambas tablas
+        const tablas = ['distribucion_diaria', 'sabana_semanal'];
+        for(const t of tablas) {
+            await _supabase.from(t).delete().match({semana: SEMANA, dia: DIA});
+            await _supabase.from(t).insert(rowsArr);
+        }
+        alert("¡Sincronización Completa!");
         window.close();
     } catch (err) {
         alert("Error: " + err.message);
         btn.disabled = false;
-        btn.innerText = "REINTENTAR";
     }
 }
 </script>
