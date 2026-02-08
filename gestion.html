@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargo Plan | Gestión de Carga</title>
+    <title>Cargo Plan | Gestión Semanal</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,22 +11,30 @@
     <style>
         :root { --primary-color: #0d6efd; }
         body { background-color: #f0f2f5; font-size: 0.85rem; overflow: hidden; }
+        
+        /* Estilo Grid tipo Excel */
         .excel-grid { background: white; border-collapse: collapse; width: 100%; table-layout: fixed; }
         .excel-grid th { 
-            background: #f1f3f4; border: 1px solid #c0c0c0; padding: 6px; 
+            background: #f1f3f4; border: 1px solid #c0c0c0; padding: 8px; 
             position: sticky; top: 0; z-index: 10; font-weight: 600; text-align: center;
         }
         .excel-grid td { 
             border: 1px solid #dcdcdc; padding: 4px 8px; outline: none; 
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            height: 35px;
+            height: 38px; vertical-align: middle;
         }
+        
+        /* Estados de Celda y Fila */
         .selected { border: 2px solid var(--primary-color) !important; background-color: #e8f0fe !important; }
-        .fila-modificada { background-color: #fff9c4 !important; }
+        .fila-modificada { background-color: #fff9c4 !important; } /* Amarillo de edición */
+
+        /* Layout */
         .sidebar { background: #ffffff; border-right: 1px solid #dee2e6; height: 100vh; padding: 1.5rem; }
         .main-content { height: 100vh; display: flex; flex-direction: column; }
         .grid-container { flex-grow: 1; overflow: auto; background: #fff; }
-        .btn-save { font-weight: bold; padding: 8px 20px; }
+        
+        .btn-save { font-weight: bold; padding: 10px 25px; transition: 0.3s; }
+        .badge-semana { font-size: 1rem; padding: 8px 15px; }
     </style>
 </head>
 <body>
@@ -34,49 +42,62 @@
 <div class="container-fluid">
     <div class="row">
         <div class="col-md-2 sidebar shadow-sm">
-            <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-box-seam"></i> CARGO PLAN</h5>
-            <label class="form-label fw-bold small">SEMANA</label>
-            <select id="selectSemana" class="form-select mb-3" onchange="cargarDatosSemana()">
-                <option value="">Cargando...</option>
-            </select>
-            <button class="btn btn-outline-primary w-100 mb-2" onclick="cargarDatosSemana()">
-                <i class="bi bi-arrow-clockwise"></i> Recargar
-            </button>
-            <button class="btn btn-outline-success w-100 mb-4" onclick="agregarFilaVacia()">
-                <i class="bi bi-plus-lg"></i> Agregar Fila
-            </button>
-            <hr>
-            <div class="card bg-light border-0 small text-muted p-2">
-                <strong>Atajos:</strong><br>
-                • Flechas: Navegar<br>
-                • Enter: Editar celda<br>
-                • 3 Clics: Ver detalles
+            <h5 class="fw-bold mb-4 text-primary text-center"><i class="bi bi-ship-front"></i> CARGO PLAN</h5>
+            
+            <div class="mb-4">
+                <label class="form-label fw-bold small">SELECCIONAR SEMANA</label>
+                <select id="selectSemana" class="form-select border-primary" onchange="cargarDatosSemana()">
+                    <option value="">Cargando semanas...</option>
+                </select>
+            </div>
+
+            <div class="d-grid gap-2">
+                <button class="btn btn-outline-primary" onclick="cargarDatosSemana()">
+                    <i class="bi bi-arrow-clockwise"></i> Recargar Datos
+                </button>
+                <button class="btn btn-outline-success" onclick="agregarFilaVacia()">
+                    <i class="bi bi-plus-square"></i> Nueva DAE
+                </button>
+            </div>
+            
+            <hr class="my-4">
+            <div class="card bg-light border-0 shadow-sm">
+                <div class="card-body p-2 small">
+                    <p class="mb-1"><strong><i class="bi bi-keyboard"></i> Atajos:</strong></p>
+                    <ul class="ps-3 mb-0 text-muted">
+                        <li>Flechas: Navegar</li>
+                        <li>Enter: Editar / Bajar</li>
+                        <li>3 Clics: Ver Hoja Diaria</li>
+                    </ul>
+                </div>
             </div>
         </div>
 
         <div class="col-md-10 main-content p-0">
-            <div class="bg-white p-3 border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="mb-0">Gestión Semanal: <span id="tituloSemana" class="badge bg-primary">---</span></h5>
-                <button class="btn btn-success btn-save" onclick="guardarCambios()">
-                    <i class="bi bi-check-all"></i> Guardar Cambios
+            <div class="bg-white p-3 border-bottom d-flex justify-content-between align-items-center shadow-sm">
+                <h5 class="mb-0">Control de Carga: <span id="tituloSemana" class="badge bg-primary badge-semana">---</span></h5>
+                <button class="btn btn-success btn-save shadow" onclick="guardarCambios()">
+                    <i class="bi bi-cloud-check-fill"></i> GUARDAR CAMBIOS
                 </button>
             </div>
+
             <div class="grid-container">
                 <table class="excel-grid" id="mainGrid">
                     <thead>
                         <tr>
-                            <th style="width: 120px;">Empresa</th>
-                            <th style="width: 180px;">DAE #</th>
+                            <th style="width: 130px;">Empresa</th>
+                            <th style="width: 190px;">DAE #</th>
                             <th style="width: 140px;">Booking</th>
-                            <th style="width: 200px;">Cliente</th>
+                            <th style="width: 210px;">Cliente</th>
                             <th style="width: 120px;">Terminal</th>
-                            <th style="width: 120px;">Destino</th>
-                            <th style="width: 150px;">Barco</th>
-                            <th style="width: 100px;">Cont.</th>
-                            <th style="width: 50px;">Acc.</th>
+                            <th style="width: 140px;">Destino</th>
+                            <th style="width: 160px;">Barco</th>
+                            <th style="width: 90px;">Cont.</th>
+                            <th style="width: 60px;"><i class="bi bi-trash"></i></th>
                         </tr>
                     </thead>
-                    <tbody id="gridBody"></tbody>
+                    <tbody id="gridBody">
+                        </tbody>
                 </table>
             </div>
         </div>
@@ -84,32 +105,40 @@
 </div>
 
 <script>
+    // --- CONEXIÓN SUPABASE ---
     const SUPABASE_URL = 'https://vqxdmmtashwloobkhbva.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC'; // Revisa si esta clave es correcta en tu panel
+    const SUPABASE_KEY = 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentSelectedCell = null;
     let clickCount = 0;
     let clickTimer = null;
 
+    // 1. INICIALIZACIÓN
     async function listarSemanas() {
         const { data } = await _supabase.from('reporte_daes').select('semana');
         if (data) {
-            const semanas = [...new Set(data.map(i => i.semana))].sort();
+            const semanasUnicas = [...new Set(data.map(i => i.semana))].sort();
             const select = document.getElementById('selectSemana');
-            select.innerHTML = semanas.map(s => `<option value="${s}">${s}</option>`).join('');
-            if (semanas.length > 0) cargarDatosSemana();
+            select.innerHTML = semanasUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (semanasUnicas.length > 0) cargarDatosSemana();
         }
     }
 
+    // 2. CARGA DE DATOS
     async function cargarDatosSemana() {
         const semana = document.getElementById('selectSemana').value;
         if (!semana) return;
         document.getElementById('tituloSemana').innerText = semana;
-        const { data } = await _supabase.from('reporte_daes').select('*').eq('semana', semana).order('id', { ascending: true });
+
+        const { data, error } = await _supabase.from('reporte_daes')
+            .select('*')
+            .eq('semana', semana)
+            .order('id', { ascending: true });
+        
         if (data) {
             document.getElementById('gridBody').innerHTML = data.map(d => crearFilaHtml(d)).join('');
-            revinculatEventosGrid();
+            activarInteractividad();
         }
     }
 
@@ -125,19 +154,24 @@
                 <td tabindex="0">${d.barco || ''}</td>
                 <td tabindex="0">${d.contenedor || ''}</td>
                 <td class="text-center">
-                    <i class="bi bi-trash text-danger" style="cursor:pointer" onclick="eliminarFila(this)"></i>
+                    <button class="btn btn-sm text-danger p-0" onclick="eliminarFila(this)">
+                        <i class="bi bi-x-circle-fill"></i>
+                    </button>
                 </td>
             </tr>`;
     }
 
-    function revinculatEventosGrid() {
+    // 3. NAVEGACIÓN Y EDICIÓN TIPO EXCEL
+    function activarInteractividad() {
         const cells = document.querySelectorAll('#gridBody td[tabindex="0"]');
+        
         cells.forEach(cell => {
             cell.addEventListener('click', function() {
                 seleccionarCelda(this);
                 gestionarTripleClic(this);
             });
 
+            // Marcar como modificada al escribir
             cell.addEventListener('input', function() {
                 this.parentElement.classList.add('fila-modificada');
             });
@@ -146,17 +180,22 @@
                 const idx = this.cellIndex;
                 const row = this.parentElement;
                 
-                if (e.key === "ArrowRight") { e.preventDefault(); seleccionarCelda(this.nextElementSibling); }
-                if (e.key === "ArrowLeft") { e.preventDefault(); seleccionarCelda(this.previousElementSibling); }
-                if (e.key === "ArrowDown") { e.preventDefault(); seleccionarCelda(row.nextElementSibling?.cells[idx]); }
-                if (e.key === "ArrowUp") { e.preventDefault(); seleccionarCelda(row.previousElementSibling?.cells[idx]); }
+                // Navegación con flechas
+                if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) {
+                    e.preventDefault();
+                    if (e.key === "ArrowRight") seleccionarCelda(this.nextElementSibling);
+                    if (e.key === "ArrowLeft") seleccionarCelda(this.previousElementSibling);
+                    if (e.key === "ArrowDown") seleccionarCelda(row.nextElementSibling?.cells[idx]);
+                    if (e.key === "ArrowUp") seleccionarCelda(row.previousElementSibling?.cells[idx]);
+                }
                 
+                // Lógica de Enter (Editar o Bajar)
                 if (e.key === "Enter") { 
                     e.preventDefault();
                     if (this.contentEditable !== "true") {
                         this.contentEditable = true;
                         this.focus();
-                        // Colocar cursor al final
+                        // Colocar cursor al final del texto
                         const range = document.createRange();
                         const sel = window.getSelection();
                         range.selectNodeContents(this);
@@ -178,52 +217,64 @@
     }
 
     function seleccionarCelda(cell) {
-        if (!cell || cell.tagName !== 'TD') return;
+        if (!cell || cell.cellIndex === undefined) return;
         if (currentSelectedCell) currentSelectedCell.classList.remove('selected');
         currentSelectedCell = cell;
         cell.classList.add('selected');
         cell.focus();
     }
 
+    // 4. GUARDADO SINCRONIZADO (FIJO)
     async function guardarCambios() {
         const btn = document.querySelector(".btn-save");
         const filasModificadas = document.querySelectorAll("#gridBody tr.fila-modificada, #gridBody tr:not([data-id])");
 
-        if (filasModificadas.length === 0) return alert("No hay cambios detectados.");
+        if (filasModificadas.length === 0) return alert("No hay cambios pendientes.");
 
         btn.disabled = true;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = 'Guardando...';
+        const originalHtml = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
         const semana = document.getElementById('selectSemana').value;
-        const promesas = Array.from(filasModificadas).map(fila => {
-            const id = fila.getAttribute('data-id');
-            const obj = {
-                semana: semana,
-                empresa: fila.cells[0].innerText.trim(),
-                dae: fila.cells[1].innerText.trim(),
-                booking: fila.cells[2].innerText.trim(),
-                cliente: fila.cells[3].innerText.trim(),
-                terminal: fila.cells[4].innerText.trim(),
-                destino: fila.cells[5].innerText.trim(),
-                barco: fila.cells[6].innerText.trim(),
-                contenedor: fila.cells[7].innerText.trim()
-            };
-            return id ? _supabase.from('reporte_daes').update(obj).eq('id', id) : _supabase.from('reporte_daes').insert([obj]);
-        });
 
         try {
-            await Promise.all(promesas);
-            alert("¡Guardado exitoso!");
-            cargarDatosSemana();
+            for (const fila of filasModificadas) {
+                const id = fila.getAttribute('data-id');
+                const datos = {
+                    semana: semana,
+                    empresa: fila.cells[0].innerText.trim(),
+                    dae: fila.cells[1].innerText.trim(),
+                    booking: fila.cells[2].innerText.trim(),
+                    cliente: fila.cells[3].innerText.trim(),
+                    terminal: fila.cells[4].innerText.trim(),
+                    destino: fila.cells[5].innerText.trim(),
+                    barco: fila.cells[6].innerText.trim(),
+                    contenedor: fila.cells[7].innerText.trim()
+                };
+
+                let res;
+                if (id) {
+                    res = await _supabase.from('reporte_daes').update(datos).eq('id', id);
+                } else {
+                    res = await _supabase.from('reporte_daes').insert([datos]);
+                }
+                
+                if (res.error) throw res.error;
+                fila.classList.remove('fila-modificada');
+            }
+
+            alert("¡Cambios guardados con éxito!");
+            await cargarDatosSemana(); // Recargar para obtener IDs de nuevas filas
+
         } catch (err) {
-            alert("Error: " + err.message);
+            alert("Error al sincronizar: " + err.message);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = originalText;
+            btn.innerHTML = originalHtml;
         }
     }
 
+    // 5. EVENTOS ADICIONALES
     function gestionarTripleClic(cell) {
         clickCount++;
         if (clickCount === 1) {
@@ -232,23 +283,25 @@
             clearTimeout(clickTimer);
             clickCount = 0;
             const dae = cell.parentElement.cells[1].innerText;
-            alert("Detalle para DAE: " + dae);
+            alert("FUNCIÓN PRÓXIMA:\nCargando Hoja Diaria para DAE: " + dae);
         }
     }
 
     function agregarFilaVacia() {
         const body = document.getElementById('gridBody');
-        const nuevaFila = crearFilaHtml({});
-        body.insertAdjacentHTML('afterbegin', nuevaFila);
-        revinculatEventosGrid();
+        body.insertAdjacentHTML('afterbegin', crearFilaHtml({}));
+        activarInteractividad();
         seleccionarCelda(body.firstChild.cells[0]);
     }
 
-    async function eliminarFila(icon) {
-        const fila = icon.closest('tr');
+    async function eliminarFila(btn) {
+        const fila = btn.closest('tr');
         const id = fila.getAttribute('data-id');
-        if (confirm("¿Eliminar registro?") && id) {
-            await _supabase.from('reporte_daes').delete().eq('id', id);
+        if (!confirm("¿Eliminar este registro permanentemente?")) return;
+
+        if (id) {
+            const { error } = await _supabase.from('reporte_daes').delete().eq('id', id);
+            if (error) return alert("Error al borrar: " + error.message);
         }
         fila.remove();
     }
