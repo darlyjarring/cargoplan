@@ -2,38 +2,41 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Importador Rápido</title>
+    <title>Editor Pro | Cargo Plan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
-        body { font-size: 0.8rem; background: #eee; }
-        .contenedor-fijo { height: 85vh; overflow: auto; background: white; border: 1px solid #ccc; }
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th, td { border: 1px solid #ccc; padding: 4px; overflow: hidden; white-space: nowrap; }
-        th { background: #333; color: white; position: sticky; top: 0; }
-        /* Optimizamos el renderizado del navegador */
-        tr { contain: content; height: 25px; }
+        body { font-size: 12px; background: #f4f4f4; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+        .toolbar { background: #1d6f42; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .grid-container { flex-grow: 1; overflow: auto; background: white; }
+        table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+        th { background: #e2e2e2; position: sticky; top: 0; z-index: 10; border: 1px solid #bbb; padding: 5px; text-align: center; }
+        td { border: 1px solid #ccc; padding: 3px 6px; white-space: nowrap; outline: none; text-overflow: ellipsis; overflow: hidden; }
+        td:focus { background: #fffde7 !important; border: 2px solid #1d6f42 !important; }
+        tr:nth-child(even) { background: #f9f9f9; }
     </style>
 </head>
 <body>
 
-<div class="p-2">
-    <div class="d-flex justify-content-between mb-2">
-        <h6 class="fw-bold">HOJA: <span id="lblDia">...</span> | SEMANA: <span id="lblSemana">...</span></h6>
-        <div>
-            <input type="file" id="inputExcel" class="d-none" accept=".xlsx, .xls">
-            <button class="btn btn-success btn-sm" onclick="document.getElementById('inputExcel').click()">1. CARGAR EXCEL</button>
-            <button class="btn btn-primary btn-sm" id="btnGrabar" onclick="grabar()" disabled>2. GRABAR EN BD</button>
-        </div>
+<div class="toolbar">
+    <div>
+        <i class="bi bi-grid-3x3"></i> <b><span id="txtDia">---</span></b> | SEMANA: <span id="txtSem">---</span>
     </div>
+    <div class="d-flex gap-2">
+        <input type="file" id="upExcel" class="d-none" accept=".xlsx, .xls">
+        <button class="btn btn-light btn-sm" onclick="document.getElementById('upExcel').click()"><i class="bi bi-file-excel"></i> Importar</button>
+        <button class="btn btn-light btn-sm" onclick="agregarFila()"><i class="bi bi-plus-circle"></i> Fila</button>
+        <button class="btn btn-warning btn-sm fw-bold" id="btnGrabar" onclick="grabarTodo()"> <i class="bi bi-save"></i> GRABAR SEMANA</button>
+    </div>
+</div>
 
-    <div class="contenedor-fijo">
-        <table id="tablaPrincipal">
-            <thead id="hHead"></thead>
-            <tbody id="bBody"></tbody>
-        </table>
-    </div>
+<div class="grid-container">
+    <table id="tblData">
+        <thead><tr id="hRow"></tr></thead>
+        <tbody id="bBody"></tbody>
+    </table>
 </div>
 
 <script>
@@ -42,56 +45,72 @@ const params = new URLSearchParams(window.location.search);
 const DIA = params.get('dia') || 'LUNES';
 const SEMANA = params.get('semana') || '0';
 
-document.getElementById('lblDia').innerText = DIA;
-document.getElementById('lblSemana').innerText = SEMANA;
+document.getElementById('txtDia').innerText = DIA.toUpperCase();
+document.getElementById('txtSem').innerText = SEMANA;
 
-const titulos = ["EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", "CONTENEDOR", "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"];
+const columnas = ["EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", "CONTENEDOR", "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"];
+document.getElementById('hRow').innerHTML = columnas.map(c => `<th style="width:130px">${c}</th>`).join('');
 
-// Dibujar cabecera una sola vez
-document.getElementById('hHead').innerHTML = `<tr>${titulos.map(t => `<th style="width:130px">${t}</th>`).join('')}</tr>`;
-
-document.getElementById('inputExcel').addEventListener('change', function(e) {
+// --- CARGA RÁPIDA (FOR NEXT MEMORY) ---
+document.getElementById('upExcel').addEventListener('change', function(e) {
     const reader = new FileReader();
     reader.onload = function(evt) {
         const wb = XLSX.read(new Uint8Array(evt.target.result), {type: 'array'});
-        const wsName = wb.SheetNames.find(n => n.toUpperCase().includes(DIA.toUpperCase())) || wb.SheetNames[0];
-        const data = XLSX.utils.sheet_to_json(wb.Sheets[wsName], {header: 1});
+        const ws = wb.Sheets[wb.SheetNames.find(n => n.toUpperCase().includes(DIA.toUpperCase())) || wb.SheetNames[0]];
+        const data = XLSX.utils.sheet_to_json(ws, {header: 1});
 
-        if (data.length > 0) {
+        if(data.length > 0) {
             const headers = data[0].map(h => String(h || "").toUpperCase().trim());
-            const rows = data.slice(1);
+            const idxs = columnas.map(c => headers.findIndex(h => h.includes(c.substring(0,4))));
             
-            // --- EL EQUIVALENTE AL FOR-NEXT DE VBA (EN MEMORIA) ---
-            // 1. Buscamos los índices de las columnas una sola vez
-            const indices = titulos.map(t => headers.findIndex(h => h.includes(t.substring(0,4))));
-
-            // 2. Construimos el String gigante (Buffer)
-            let buffer = "";
-            for (let i = 0; i < rows.length; i++) {
-                if (!rows[i] || rows[i].length < 2) continue; // Ignorar filas vacías
-                
-                buffer += "<tr>";
-                for (let j = 0; j < indices.length; j++) {
-                    let celdaVal = indices[j] !== -1 ? rows[i][indices[j]] : "";
-                    buffer += `<td contenteditable="true">${celdaVal || ""}</td>`;
-                }
-                buffer += "</tr>";
+            let html = "";
+            for(let i=1; i<data.length; i++) {
+                if(!data[i][idxs[0]] && !data[i][idxs[5]]) continue; // Evitar basura
+                html += `<tr>${idxs.map(ci => `<td contenteditable="true">${data[i][ci] || ""}</td>`).join('')}</tr>`;
             }
-
-            // 3. Inyectamos todo de golpe al DOM
-            document.getElementById('bBody').innerHTML = buffer;
-            document.getElementById('btnGrabar').disabled = false;
+            document.getElementById('bBody').innerHTML = html;
+            initNavegacion();
         }
     };
     reader.readAsArrayBuffer(e.target.files[0]);
 });
 
-async function grabar() {
+function agregarFila() {
+    const tr = document.createElement('tr');
+    tr.innerHTML = columnas.map(() => `<td contenteditable="true"></td>`).join('');
+    document.getElementById('bBody').appendChild(tr);
+    initNavegacion();
+}
+
+// --- NAVEGACIÓN TIPO EXCEL (FLECHAS Y ENTER) ---
+function initNavegacion() {
+    const cells = document.querySelectorAll('td[contenteditable="true"]');
+    cells.forEach(cell => {
+        cell.onkeydown = function(e) {
+            const col = this.cellIndex;
+            const row = this.parentElement.rowIndex - 1;
+            const tbody = document.getElementById('bBody');
+
+            if (e.key === "ArrowRight") { e.preventDefault(); this.nextElementSibling?.focus(); }
+            if (e.key === "ArrowLeft") { e.preventDefault(); this.previousElementSibling?.focus(); }
+            if (e.key === "ArrowDown" || e.key === "Enter") { 
+                e.preventDefault(); 
+                tbody.rows[row + 1]?.cells[col]?.focus(); 
+            }
+            if (e.key === "ArrowUp") { 
+                e.preventDefault(); 
+                tbody.rows[row - 1]?.cells[col]?.focus(); 
+            }
+        };
+    });
+}
+
+async function grabarTodo() {
     const btn = document.getElementById('btnGrabar');
     btn.disabled = true;
-    
-    const rows = document.querySelectorAll('#bBody tr');
-    const dataAEnviar = Array.from(rows).map(tr => {
+    btn.innerText = "PROCESANDO...";
+
+    const rows = Array.from(document.querySelectorAll('#bBody tr')).map(tr => {
         const c = tr.cells;
         return {
             semana: SEMANA, dia: DIA,
@@ -104,15 +123,22 @@ async function grabar() {
     });
 
     try {
-        // Borrar anterior del día y cargar nuevo
+        // 1. Guardar en tabla Diaria
         await _supabase.from('distribucion_diaria').delete().match({semana: SEMANA, dia: DIA});
-        const { error } = await _supabase.from('distribucion_diaria').insert(dataAEnviar);
+        await _supabase.from('distribucion_diaria').insert(rows);
+
+        // 2. Sincronizar con SABANA SEMANAL (Consolidado)
+        // Nota: Aquí se ordenarán por booking automáticamente al consultar
+        await _supabase.from('sabana_semanal').delete().match({semana: SEMANA, dia: DIA});
+        const { error } = await _supabase.from('sabana_semanal').insert(rows);
+
         if (error) throw error;
-        alert("¡Guardado correctamente!");
+        alert("Sincronizado con Éxito en Sábana Semanal");
         window.close();
     } catch (err) {
         alert("Error: " + err.message);
         btn.disabled = false;
+        btn.innerText = "REINTENTAR";
     }
 }
 </script>
