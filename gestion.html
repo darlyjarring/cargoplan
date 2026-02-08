@@ -3,71 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargo Plan | Gestión Semanal</title>
+    <title>Cargo Plan | Gestión de Carga</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        body { background-color: #f8f9fa; font-size: 0.9rem; }
-        .excel-grid { background: white; border-collapse: collapse; width: 100%; }
-        .excel-grid th { background: #e2e8f0; border: 1px solid #cbd5e1; padding: 8px; position: sticky; top: 0; z-index: 10; }
-        .excel-grid td { border: 1px solid #cbd5e1; padding: 4px 8px; outline: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+        :root { --primary-color: #0d6efd; }
+        body { background-color: #f0f2f5; font-size: 0.85rem; overflow: hidden; }
         
-        /* Celda seleccionada (Navegación) */
-        .selected { border: 2px solid #0d6efd !important; background-color: #e7f1ff !important; }
+        /* Estilo Grid tipo Excel */
+        .excel-grid { background: white; border-collapse: collapse; width: 100%; table-layout: fixed; }
+        .excel-grid th { 
+            background: #f1f3f4; border: 1px solid #c0c0c0; padding: 6px; 
+            position: sticky; top: 0; z-index: 10; font-weight: 600; text-align: center;
+        }
+        .excel-grid td { 
+            border: 1px solid #dcdcdc; padding: 4px 8px; outline: none; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         
-        /* Animación de clic */
-        .flash-click { animation: pulse 0.3s; }
-        @keyframes pulse { 0% { background-color: #0d6efd; color: white; } 100% { background-color: transparent; } }
+        /* Navegación y Selección */
+        .selected { border: 2px solid var(--primary-color) !important; background-color: #e8f0fe !important; }
+        
+        /* Fila Modificada (Amarillo como indicaste) */
+        .fila-modificada { background-color: #fff9c4 !important; }
+        .fila-modificada td { border-color: #fbc02d !important; }
 
-        .sidebar { background: white; border-right: 1px solid #dee2e6; height: 100vh; padding: 20px; }
+        /* Layout */
+        .sidebar { background: #ffffff; border-right: 1px solid #dee2e6; height: 100vh; padding: 1.5rem; }
+        .main-content { height: 100vh; display: flex; flex-direction: column; }
+        .grid-container { flex-grow: 1; overflow: auto; background: #fff; }
+        
+        /* Botones */
+        .btn-save { font-weight: bold; padding: 8px 20px; }
     </style>
 </head>
 <body>
 
 <div class="container-fluid">
     <div class="row">
-        <div class="col-md-2 sidebar">
-            <h5 class="fw-bold"><i class="bi bi-filter-square"></i> Filtros</h5>
-            <hr>
-            <label class="form-label small fw-bold">Seleccionar Semana:</label>
+        <div class="col-md-2 sidebar shadow-sm">
+            <h5 class="fw-bold mb-4 text-primary"><i class="bi bi-box-seam"></i> CARGO PLAN</h5>
+            
+            <label class="form-label fw-bold small">SEMANA</label>
             <select id="selectSemana" class="form-select mb-3" onchange="cargarDatosSemana()">
-                <option value="">Cargando semanas...</option>
+                <option value="">Cargando...</option>
             </select>
-            <button class="btn btn-primary w-100 mb-2" onclick="cargarDatosSemana()">
-                <i class="bi bi-arrow-clockwise"></i> Actualizar
+
+            <button class="btn btn-outline-primary w-100 mb-2" onclick="cargarDatosSemana()">
+                <i class="bi bi-arrow-clockwise"></i> Recargar
             </button>
-            <button class="btn btn-outline-success w-100" onclick="agregarFilaVacia()">
-                <i class="bi bi-plus-circle"></i> Nueva Fila
+            <button class="btn btn-outline-success w-100 mb-4" onclick="agregarFilaVacia()">
+                <i class="bi bi-plus-lg"></i> Agregar Fila
             </button>
+            
             <hr>
-            <div class="alert alert-info small">
-                <strong>Tips:</strong><br>
-                - Use flechas para navegar.<br>
-                - Doble clic para editar.<br>
-                - 3 clics para ventana especial.
+            <div class="card bg-light border-0">
+                <div class="card-body p-2 small text-muted">
+                    <strong>Atajos:</strong><br>
+                    • Flechas: Navegar<br>
+                    • Enter: Editar celda<br>
+                    • 3 Clics: Ver detalles
+                </div>
             </div>
         </div>
 
-        <div class="col-md-10 p-0">
-            <div class="p-3 bg-white border-bottom d-flex justify-content-between">
-                <h4 class="mb-0">Cargo Plan: <span id="tituloSemana" class="text-primary">---</span></h4>
-                <button class="btn btn-success btn-sm" onclick="guardarCambios()">Guardar Cambios</button>
+        <div class="col-md-10 main-content p-0">
+            <div class="bg-white p-3 border-bottom d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Gestión Semanal: <span id="tituloSemana" class="badge bg-primary">---</span></h5>
+                <button class="btn btn-success btn-save" onclick="guardarCambios()">
+                    <i class="bi bi-check-all"></i> Guardar Cambios
+                </button>
             </div>
-            <div class="table-responsive" style="height: calc(100vh - 70px);">
+
+            <div class="grid-container">
                 <table class="excel-grid" id="mainGrid">
                     <thead>
                         <tr>
-                            <th>Empresa</th>
-                            <th>DAE #</th>
-                            <th>Booking</th>
-                            <th>Cliente</th>
-                            <th>Terminal</th>
-                            <th>Destino</th>
-                            <th>Barco</th>
-                            <th>Contenedor</th>
-                            <th>Acciones</th>
+                            <th style="width: 120px;">Empresa</th>
+                            <th style="width: 180px;">DAE #</th>
+                            <th style="width: 140px;">Booking</th>
+                            <th style="width: 200px;">Cliente</th>
+                            <th style="width: 120px;">Terminal</th>
+                            <th style="width: 120px;">Destino</th>
+                            <th style="width: 150px;">Barco</th>
+                            <th style="width: 100px;">Cont.</th>
+                            <th style="width: 50px;">Acc.</th>
                         </tr>
                     </thead>
                     <tbody id="gridBody">
@@ -79,7 +101,7 @@
 </div>
 
 <script>
-    // --- CONFIGURACIÓN (REEMPLAZAR CON TUS LLAVES) ---
+    // --- CONFIGURACIÓN DE CONEXIÓN ---
     const SUPABASE_URL = 'https://vqxdmmtashwloobkhbva.supabase.co';
     const SUPABASE_KEY = 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC';
     const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
@@ -88,177 +110,158 @@
     let clickCount = 0;
     let clickTimer = null;
 
-    // 1. CARGAR LISTA DE SEMANAS AL INICIAR
+    // 1. CARGAR SEMANAS DISPONIBLES
     async function listarSemanas() {
-        const { data, error } = await _supabase.from('reporte_daes').select('semana');
+        const { data } = await _supabase.from('reporte_daes').select('semana');
         if (data) {
-            const semanasUnicas = [...new Set(data.map(item => item.semana))];
+            const semanas = [...new Set(data.map(i => i.semana))].sort();
             const select = document.getElementById('selectSemana');
-            select.innerHTML = semanasUnicas.map(s => `<option value="${s}">${s}</option>`).join('');
+            select.innerHTML = semanas.map(s => `<option value="${s}">${s}</option>`).join('');
+            if (semanas.length > 0) cargarDatosSemana();
         }
     }
 
-    // 2. CARGAR DATOS DE LA SEMANA ELEGIDA
+    // 2. CARGAR DATOS EN EL GRID
     async function cargarDatosSemana() {
         const semana = document.getElementById('selectSemana').value;
         if (!semana) return;
         document.getElementById('tituloSemana').innerText = semana;
 
-        const { data, error } = await _supabase.from('reporte_daes').select('*').eq('semana', semana);
+        const { data, error } = await _supabase.from('reporte_daes').select('*').eq('semana', semana).order('id', { ascending: true });
         
         if (data) {
-            const html = data.map(d => crearFilaExcel(d)).join('');
-            document.getElementById('gridBody').innerHTML = html;
-            initGridEvents();
+            document.getElementById('gridBody').innerHTML = data.map(d => crearFilaHtml(d)).join('');
+            revinculatEventosGrid();
         }
     }
 
-    function crearFilaExcel(d) {
+    function crearFilaHtml(d) {
         return `
             <tr data-id="${d.id || ''}">
-                <td tabindex="0">${d.empresa || ''}</td>
-                <td tabindex="0">${d.dae || ''}</td>
-                <td tabindex="0">${d.booking || ''}</td>
-                <td tabindex="0">${d.cliente || ''}</td>
-                <td tabindex="0">${d.terminal || ''}</td>
-                <td tabindex="0">${d.destino || ''}</td>
-                <td tabindex="0">${d.barco || ''}</td>
-                <td tabindex="0">${d.contenedor || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.empresa || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.dae || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.booking || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.cliente || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.terminal || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.destino || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.barco || ''}</td>
+                <td tabindex="0" oninput="marcarFila(this)">${d.contenedor || ''}</td>
                 <td class="text-center">
-                    <button class="btn btn-sm p-0 text-danger" onclick="eliminarFila(this)"><i class="bi bi-x-square"></i></button>
+                    <i class="bi bi-trash text-danger" style="cursor:pointer" onclick="eliminarFila(this)"></i>
                 </td>
             </tr>`;
     }
 
-    // 3. NAVEGACIÓN TIPO EXCEL (Direccionales y Clics)
-    function initGridEvents() {
+    // 3. LÓGICA DE INTERACCIÓN (NAVEGACIÓN)
+    function revinculatEventosGrid() {
         const cells = document.querySelectorAll('#gridBody td[tabindex="0"]');
         
         cells.forEach(cell => {
-            cell.addEventListener('click', function(e) {
-                selectCell(this);
-                handleMultiClick(this);
+            cell.addEventListener('click', function() {
+                seleccionarCelda(this);
+                gestionarTripleClic(this);
             });
 
             cell.addEventListener('keydown', function(e) {
-                const cellIndex = this.cellIndex;
+                const idx = this.cellIndex;
                 const row = this.parentElement;
                 
-                if (e.key === "ArrowRight") selectCell(this.nextElementSibling);
-                if (e.key === "ArrowLeft") selectCell(this.previousElementSibling);
-                if (e.key === "ArrowDown") selectCell(row.nextElementSibling?.cells[cellIndex]);
-                if (e.key === "ArrowUp") selectCell(row.previousElementSibling?.cells[cellIndex]);
-                if (e.key === "Enter") { e.preventDefault(); this.contentEditable = true; this.focus(); }
+                if (e.key === "ArrowRight") seleccionarCelda(this.nextElementSibling);
+                if (e.key === "ArrowLeft") seleccionarCelda(this.previousElementSibling);
+                if (e.key === "ArrowDown") seleccionarCelda(row.nextElementSibling?.cells[idx]);
+                if (e.key === "ArrowUp") seleccionarCelda(row.previousElementSibling?.cells[idx]);
+                if (e.key === "Enter") { 
+                    e.preventDefault(); 
+                    this.contentEditable = true; 
+                    this.focus(); 
+                }
             });
 
             cell.addEventListener('dblclick', function() {
                 this.contentEditable = true;
                 this.focus();
             });
+
+            // Al perder el foco, quitamos el modo edición
+            cell.addEventListener('blur', function() { this.contentEditable = false; });
         });
     }
 
-    function selectCell(cell) {
-        if (!cell || cell.cellIndex === undefined) return;
+    function seleccionarCelda(cell) {
+        if (!cell || cell.tagName !== 'TD') return;
         if (currentSelectedCell) currentSelectedCell.classList.remove('selected');
         currentSelectedCell = cell;
         cell.classList.add('selected');
         cell.focus();
     }
 
-    // LÓGICA DE 3 CLICS
-    function handleMultiClick(cell) {
+    function marcarFila(elemento) {
+        elemento.parentElement.classList.add('fila-modificada');
+    }
+
+    // 4. GUARDAR CAMBIOS INTELIGENTE
+    async function guardarCambios() {
+        const btn = document.querySelector(".btn-save");
+        const filasModificadas = document.querySelectorAll("#gridBody tr.fila-modificada, #gridBody tr:not([data-id])");
+
+        if (filasModificadas.length === 0) return alert("No hay cambios para guardar.");
+
+        btn.disabled = true;
+        btn.innerHTML = 'Guardando...';
+
+        const semana = document.getElementById('selectSemana').value;
+        const promesas = Array.from(filasModificadas).map(fila => {
+            const id = fila.getAttribute('data-id');
+            const obj = {
+                semana: semana,
+                empresa: fila.cells[0].innerText.trim(),
+                dae: fila.cells[1].innerText.trim(),
+                booking: fila.cells[2].innerText.trim(),
+                cliente: fila.cells[3].innerText.trim(),
+                terminal: fila.cells[4].innerText.trim(),
+                destino: fila.cells[5].innerText.trim(),
+                barco: fila.cells[6].innerText.trim(),
+                contenedor: fila.cells[7].innerText.trim()
+            };
+            return id ? _supabase.from('reporte_daes').update(obj).eq('id', id) : _supabase.from('reporte_daes').insert([obj]);
+        });
+
+        const resultados = await Promise.all(promesas);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check-all"></i> Guardar Cambios';
+        
+        alert("¡Sincronización completa!");
+        cargarDatosSemana();
+    }
+
+    // 5. EVENTOS ESPECIALES
+    function gestionarTripleClic(cell) {
         clickCount++;
         if (clickCount === 1) {
             clickTimer = setTimeout(() => { clickCount = 0; }, 400);
         } else if (clickCount === 3) {
             clearTimeout(clickTimer);
             clickCount = 0;
-            abrirVentanaDetalle(cell);
+            const dae = cell.parentElement.cells[1].innerText;
+            alert("Abriendo detalle para DAE: " + dae + "\n(Aquí cargaremos la lógica de BLASTI / CAMPO)");
         }
-    }
-
-    function abrirVentanaDetalle(cell) {
-        const row = cell.parentElement;
-        const dae = row.cells[1].innerText;
-        alert("--- VENTANA DE DETALLE (PROXIMAMENTE) ---\nAquí se cargará la Hoja Diaria para la DAE: " + dae);
-        // Aquí llamaremos a la lógica de BLASTI / CAMPO
     }
 
     function agregarFilaVacia() {
-        const body = document.getElementById('gridBody');
-        body.insertAdjacentHTML('beforeend', crearFilaExcel({}));
-        initGridEvents();
+        const html = crearFilaHtml({});
+        document.getElementById('gridBody').insertAdjacentHTML('afterbegin', html);
+        revinculatEventosGrid();
     }
-//nuevo ingreso boton grabar
-    // 4. GUARDAR CAMBIOS (Actualizar o Insertar nuevos)
-async function guardarCambios() {
-    const btn = event.target;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
-    const semanaActual = document.getElementById('selectSemana').value;
-    const filas = document.querySelectorAll("#gridBody tr");
-    const promesas = [];
-
-    filas.forEach(fila => {
+    async function eliminarFila(icon) {
+        const fila = icon.closest('tr');
         const id = fila.getAttribute('data-id');
-        const datosFila = {
-            semana: semanaActual,
-            empresa: fila.cells[0].innerText,
-            dae: fila.cells[1].innerText,
-            booking: fila.cells[2].innerText,
-            cliente: fila.cells[3].innerText,
-            terminal: fila.cells[4].innerText,
-            destino: fila.cells[5].innerText,
-            barco: fila.cells[6].innerText,
-            contenedor: fila.cells[7].innerText
-        };
-
-        if (id) {
-            // Si tiene ID, actualizamos el registro existente
-            promesas.push( _supabase.from('reporte_daes').update(datosFila).eq('id', id) );
-        } else {
-            // Si no tiene ID (es una fila nueva), la insertamos
-            promesas.push( _supabase.from('reporte_daes').insert([datosFila]) );
+        if (confirm("¿Eliminar este registro?") && id) {
+            await _supabase.from('reporte_daes').delete().eq('id', id);
         }
-    });
-
-    try {
-        const resultados = await Promise.all(promesas);
-        
-        // Revisar si hubo errores en alguna de las peticiones
-        const error = resultados.find(r => r.error);
-        if (error) throw error.error;
-
-        alert("¡Cambios guardados exitosamente!");
-        // Recargamos para obtener los IDs de las nuevas filas insertadas
-        cargarDatosSemana(); 
-    } catch (err) {
-        console.error(err);
-        alert("Error al guardar: " + err.message);
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Guardar Cambios';
+        fila.remove();
     }
-}
 
-// 5. ELIMINAR FILA (De la pantalla y de la base de datos)
-async function eliminarFila(btn) {
-    const fila = btn.parentElement.parentElement;
-    const id = fila.getAttribute('data-id');
-
-    if (!confirm("¿Está seguro de eliminar esta fila?")) return;
-
-    if (id) {
-        const { error } = await _supabase.from('reporte_daes').delete().eq('id', id);
-        if (error) {
-            alert("Error al eliminar: " + error.message);
-            return;
-        }
-    }
-    fila.remove();
-}
     window.onload = listarSemanas;
 </script>
 
