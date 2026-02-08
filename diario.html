@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Distribución Diaria</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background-color: #f8f9fa; font-size: 0.8rem; }
+        .excel-table { background: white; width: 100%; border-collapse: collapse; }
+        .excel-table th { background: #343a40; color: white; border: 1px solid #454d55; padding: 8px; position: sticky; top: 0; }
+        .excel-table td { border: 1px solid #dee2e6; padding: 4px; outline: none; }
+        .selected { background-color: #e8f0fe !important; border: 2px solid #0d6efd !important; }
+        .modificado { background-color: #fff9c4 !important; }
+    </style>
+</head>
+<body>
+
+<div class="p-3">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4>Distribución: <span id="lblDia" class="text-primary">---</span> - Sem: <span id="lblSemana">---</span></h4>
+        <div>
+            <input type="file" id="inputExcel" class="d-none" accept=".csv, .json"> <button class="btn btn-sm btn-outline-primary" onclick="agregarFila()"><i class="bi bi-plus"></i> Fila</button>
+            <button class="btn btn-sm btn-success" onclick="guardarTodo()"><i class="bi bi-save"></i> Guardar Cambios</button>
+            <button class="btn btn-sm btn-secondary" onclick="window.close()"><i class="bi bi-x"></i> Cerrar</button>
+        </div>
+    </div>
+
+    <div class="table-responsive" style="height: 85vh;">
+        <table class="excel-table" id="tablaDiaria">
+            <thead>
+                <tr>
+                    <th>EMPRESA</th><th>PROVEEDOR</th><th>DEPOSITO</th><th>TERMINAL</th>
+                    <th>BUQUE</th><th>BOOKING</th><th>MARCA</th><th>CODIGO</th>
+                    <th>PRODUCTOR</th><th>FINCA</th><th>CONTENEDOR</th><th>CHOFER</th>
+                    <th>CEDULA</th><th>PLACA</th><th>SUPERVISOR</th><th></th>
+                </tr>
+            </thead>
+            <tbody id="bodyDiario"></tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    const _supabase = supabase.createClient('URL', 'KEY');
+    const params = new URLSearchParams(window.location.search);
+    const DIA = params.get('dia');
+    const SEMANA = params.get('semana');
+
+    document.getElementById('lblDia').innerText = DIA;
+    document.getElementById('lblSemana').innerText = SEMANA;
+
+    async function cargarDatos() {
+        const { data } = await _supabase.from('distribucion_diaria')
+            .select('*').eq('semana', SEMANA).eq('dia', DIA).order('id');
+        
+        const html = data.map(d => `
+            <tr data-id="${d.id}">
+                ${generarCeldas(d)}
+                <td><i class="bi bi-trash text-danger" onclick="eliminarFila(this)"></i></td>
+            </tr>`).join('');
+        document.getElementById('bodyDiario').innerHTML = html;
+        vincularEdicion();
+    }
+
+    function generarCeldas(d = {}) {
+        const campos = ['empresa','proveedor','deposito','terminal','buque','booking','marca','codigo','productor','finca','contenedor','chofer','cedula','placa','supervisor'];
+        return campos.map(c => `<td contenteditable="true" oninput="marcar(this)">${d[c] || ''}</td>`).join('');
+    }
+
+    function marcar(td) { td.parentElement.classList.add('modificado'); }
+
+    async function guardarTodo() {
+        const filas = document.querySelectorAll('.modificado, tr:not([data-id])');
+        for (let fila of filas) {
+            const id = fila.getAttribute('data-id');
+            const c = fila.cells;
+            const obj = {
+                semana: SEMANA, dia: DIA,
+                empresa: c[0].innerText, proveedor: c[1].innerText, deposito: c[2].innerText,
+                terminal: c[3].innerText, buque: c[4].innerText, booking: c[5].innerText,
+                marca: c[6].innerText, codigo: c[7].innerText, productor: c[8].innerText,
+                finca: c[9].innerText, contenedor: c[10].innerText, chofer: c[11].innerText,
+                cedula: c[12].innerText, placa: c[13].innerText, supervisor: c[14].innerText
+            };
+
+            if (id) await _supabase.from('distribucion_diaria').update(obj).eq('id', id);
+            else await _supabase.from('distribucion_diaria').insert([obj]);
+        }
+        alert("¡Datos actualizados!");
+        cargarDatos();
+    }
+
+    function agregarFila() {
+        const tr = document.createElement('tr');
+        tr.innerHTML = generarCeldas() + `<td><i class="bi bi-trash text-danger" onclick="this.parentElement.parentElement.remove()"></i></td>`;
+        document.getElementById('bodyDiario').prepend(tr);
+    }
+
+    window.onload = cargarDatos;
+</script>
+</body>
+</html>
