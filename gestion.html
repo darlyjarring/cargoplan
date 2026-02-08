@@ -73,27 +73,7 @@
             </div>
         </div>
 
-        <div class="mt-4">
-    <label class="fw-bold small text-muted">DISTRIBUCIÓN DIARIA</label>
-    <div class="list-group list-group-flush small">
-        <a href="#" class="list-group-item list-group-item-action" onclick="abrirDia('Domingo')">Domingo</a>
-        <a href="#" class="list-group-item list-group-item-action" onclick="abrirDia('Lunes')">Lunes</a>
-        <a href="#" class="list-group-item list-group-item-action" onclick="abrirDia('Martes')">Martes</a>
-        <a href="#" class="list-group-item list-group-item-action" onclick="abrirDia('Miercoles')">Miércoles</a>
-        <a href="#" class="list-group-item list-group-item-action" onclick="abrirDia('Jueves')">Jueves</a>
-        <a href="#" class="list-group-item list-group-item-action" onclick="abrirDia('Viernes')">Viernes</a>
-        <a href="#" class="list-group-item list-group-item-action" onclick="abrirDia('Sabado')">Sábado</a>
-    </div>
-</div>
 
-<script>
-function abrirDia(dia) {
-    const sem = document.getElementById('selectSemana').value;
-    if(!sem) return alert("Seleccione una semana primero");
-    // Abre en una ventana nueva o modal
-    window.open(`diario.html?dia=${dia}&semana=${sem}`, 'diario', 'width=1200,height=800');
-}
-</script>
         <div class="col-md-10 main-content p-0">
             <div class="bg-white p-3 border-bottom d-flex justify-content-between align-items-center shadow-sm">
                 <h5 class="mb-0">Control de Carga: <span id="tituloSemana" class="badge bg-primary badge-semana">---</span></h5>
