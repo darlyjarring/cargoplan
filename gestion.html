@@ -190,7 +190,75 @@
         body.insertAdjacentHTML('beforeend', crearFilaExcel({}));
         initGridEvents();
     }
+//nuevo ingreso boton grabar
+    // 4. GUARDAR CAMBIOS (Actualizar o Insertar nuevos)
+async function guardarCambios() {
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
+    const semanaActual = document.getElementById('selectSemana').value;
+    const filas = document.querySelectorAll("#gridBody tr");
+    const promesas = [];
+
+    filas.forEach(fila => {
+        const id = fila.getAttribute('data-id');
+        const datosFila = {
+            semana: semanaActual,
+            empresa: fila.cells[0].innerText,
+            dae: fila.cells[1].innerText,
+            booking: fila.cells[2].innerText,
+            cliente: fila.cells[3].innerText,
+            terminal: fila.cells[4].innerText,
+            destino: fila.cells[5].innerText,
+            barco: fila.cells[6].innerText,
+            contenedor: fila.cells[7].innerText
+        };
+
+        if (id) {
+            // Si tiene ID, actualizamos el registro existente
+            promesas.push( _supabase.from('reporte_daes').update(datosFila).eq('id', id) );
+        } else {
+            // Si no tiene ID (es una fila nueva), la insertamos
+            promesas.push( _supabase.from('reporte_daes').insert([datosFila]) );
+        }
+    });
+
+    try {
+        const resultados = await Promise.all(promesas);
+        
+        // Revisar si hubo errores en alguna de las peticiones
+        const error = resultados.find(r => r.error);
+        if (error) throw error.error;
+
+        alert("¡Cambios guardados exitosamente!");
+        // Recargamos para obtener los IDs de las nuevas filas insertadas
+        cargarDatosSemana(); 
+    } catch (err) {
+        console.error(err);
+        alert("Error al guardar: " + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Guardar Cambios';
+    }
+}
+
+// 5. ELIMINAR FILA (De la pantalla y de la base de datos)
+async function eliminarFila(btn) {
+    const fila = btn.parentElement.parentElement;
+    const id = fila.getAttribute('data-id');
+
+    if (!confirm("¿Está seguro de eliminar esta fila?")) return;
+
+    if (id) {
+        const { error } = await _supabase.from('reporte_daes').delete().eq('id', id);
+        if (error) {
+            alert("Error al eliminar: " + error.message);
+            return;
+        }
+    }
+    fila.remove();
+}
     window.onload = listarSemanas;
 </script>
 
