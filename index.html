@@ -3,54 +3,70 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cargo Plan | Gestión de DAEs</title>
+    <title>Cargo Plan | Sistema de Gestión de DAEs</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
     <style>
-        .table-editable td { cursor: pointer; }
-        .table-editable td:focus { background-color: #fff9c4; outline: none; }
-        .navbar-brand { font-weight: bold; color: #0d6efd; }
+        :root { --primary-color: #0d6efd; }
+        body { background-color: #f4f7f6; }
+        .navbar-brand { font-weight: 800; letter-spacing: 1px; }
+        .table-editable td { cursor: cell; transition: 0.2s; }
+        .table-editable td:focus { background-color: #fff9c4; outline: 2px solid #ffc107; }
+        .table-responsive { max-height: 70vh; overflow-y: auto; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        thead { position: sticky; top: 0; z-index: 10; }
+        .card { border: none; border-radius: 12px; }
+        .btn-upload { padding: 10px 25px; font-weight: 600; }
     </style>
 </head>
-<body class="bg-light">
+<body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark mb-4">
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm mb-4">
     <div class="container">
-        <a class="navbar-brand" href="#"><i class="bi bi-ship-front"></i> CARGO PLAN</a>
+        <a class="navbar-brand" href="#"><i class="bi bi-ship-front-fill"></i> CARGO PLAN</a>
+        <span class="navbar-text text-uppercase small d-none d-md-block">Gestión Logística Semanal</span>
     </div>
 </nav>
 
-<div class="container">
-    <div class="row mb-4">
-        <div class="col-md-12">
+<div class="container-fluid px-4">
+    <div class="row mb-4 justify-content-center">
+        <div class="col-md-8">
             <div class="card shadow-sm">
-                <div class="card-body">
-                    <h5 class="card-title">Carga de Datos Semanal</h5>
-                    <p class="text-muted">Sube el archivo Excel para procesar las DAEs de la semana.</p>
-                    <div class="input-group">
-                        <input type="file" id="inputExcel" class="form-control" accept=".xlsx, .xls">
-                        <button class="btn btn-primary" onclick="procesarArchivo()"><i class="bi bi-upload"></i> Procesar</button>
+                <div class="card-body p-4 text-center">
+                    <h5 class="card-title mb-3">Importar Reporte de Excel</h5>
+                    <div class="row g-2 justify-content-center">
+                        <div class="col-sm-8">
+                            <input type="file" id="inputExcel" class="form-control form-control-lg" accept=".xlsx, .xls">
+                        </div>
+                        <div class="col-sm-4">
+                            <button class="btn btn-primary btn-lg w-100 btn-upload" onclick="procesarArchivo()">
+                                <i class="bi bi-gear-fill"></i> Procesar DAEs
+                            </button>
+                        </div>
                     </div>
+                    <p class="text-muted mt-2 small">El sistema detectará automáticamente empresas, DAEs y contenedores.</p>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="seccionTabla" style="display: none;">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-            <h3>Listado de DAEs Generado</h3>
-            <div>
-                <button class="btn btn-outline-success btn-sm" onclick="agregarFila()"><i class="bi bi-plus-circle"></i> Agregar Fila</button>
-                <button class="btn btn-success" onclick="guardarEnBase()"><i class="bi bi-database-fill-check"></i> Guardar Todo</button>
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0 text-primary fw-bold">Listado Semanal Sincronizado</h5>
+                <div class="btn-group">
+                    <button class="btn btn-outline-success btn-sm" onclick="agregarFila()">
+                        <i class="bi bi-plus-lg"></i> Añadir Fila
+                    </button>
+                    <button class="btn btn-success btn-sm ms-2" onclick="guardarEnBase()">
+                        <i class="bi bi-cloud-arrow-up-fill"></i> GUARDAR EN BASE DE DATOS
+                    </button>
+                </div>
             </div>
-        </div>
-
-        <div class="card shadow-sm">
             <div class="table-responsive">
-                <table class="table table-hover table-bordered mb-0" id="tablaDaes">
+                <table class="table table-hover align-middle mb-0" id="tablaDaes">
                     <thead class="table-dark">
                         <tr>
                             <th>Empresa</th>
@@ -61,7 +77,7 @@
                             <th>Destino</th>
                             <th>Barco</th>
                             <th>Contenedor</th>
-                            <th>Acciones</th>
+                            <th class="text-center">Eliminar</th>
                         </tr>
                     </thead>
                     <tbody id="cuerpoTabla" class="table-editable">
@@ -73,12 +89,15 @@
 </div>
 
 <script>
-    let datosTemporales = [];
+    // --- CONFIGURACIÓN DE SUPABASE (Debes completar esto después) ---
+    const SUPABASE_URL = 'TU_URL_DE_SUPABASE';
+    const SUPABASE_KEY = 'TU_KEY_DE_SUPABASE';
+    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // --- LÓGICA PARA LEER EL EXCEL ---
+    // --- LÓGICA DE PROCESAMIENTO ---
     function procesarArchivo() {
         const input = document.getElementById('inputExcel');
-        if (!input.files[0]) return alert("Selecciona un archivo primero");
+        if (!input.files[0]) return alert("Por favor, selecciona un archivo de Excel.");
 
         const reader = new FileReader();
         reader.onload = function(e) {
@@ -89,16 +108,32 @@
 
             let mEmpresa = "";
             let filasHtml = "";
+            
+            // Variables de arrastre (Replica el MergeArea de tu VBA)
+            let lastDae = "", lastBooking = "", lastCliente = "", 
+                lastTerminal = "", lastDestino = "", lastBarco = "";
 
-            // Lógica idéntica a tu VBA
-            jsonData.forEach((fila, index) => {
-                // Detectar Empresa (Columna 1 tiene dato, las otras no)
+            jsonData.forEach((fila) => {
+                // 1. Detectar Empresa (Columna 1 tiene dato, B y G vacías)
                 if (fila[0] && !fila[1] && !fila[6]) {
-                    mEmpresa = fila[0].trim();
+                    mEmpresa = fila[0].toString().trim();
                 } 
-                // Detectar Fila de Datos (Columna 7 no está vacía y no es el encabezado)
-                else if (fila[6] && fila[6] !== "CONT.") {
-                    filasHtml += crearFilaHtml(mEmpresa, fila[0], fila[1], fila[2], fila[3], fila[4], fila[5], fila[6]);
+                // 2. Detectar Fila de Datos (Columna G / índice 6 tiene el CONT.)
+                else if (fila[6] && fila[6].toString().trim() !== "CONT.") {
+                    
+                    // Lógica de recuperación de celdas combinadas
+                    let currentDae      = (fila[0] !== undefined && fila[0] !== "") ? fila[0] : lastDae;
+                    let currentBooking  = (fila[1] !== undefined && fila[1] !== "") ? fila[1] : lastBooking;
+                    let currentCliente  = (fila[2] !== undefined && fila[2] !== "") ? fila[2] : lastCliente;
+                    let currentTerminal = (fila[3] !== undefined && fila[3] !== "") ? fila[3] : lastTerminal;
+                    let currentDestino  = (fila[4] !== undefined && fila[4] !== "") ? fila[4] : lastDestino;
+                    let currentBarco    = (fila[5] !== undefined && fila[5] !== "") ? fila[5] : lastBarco;
+
+                    // Actualizar memoria para la siguiente fila
+                    lastDae = currentDae; lastBooking = currentBooking; lastCliente = currentCliente;
+                    lastTerminal = currentTerminal; lastDestino = currentDestino; lastBarco = currentBarco;
+
+                    filasHtml += crearFilaHtml(mEmpresa, currentDae, currentBooking, currentCliente, currentTerminal, currentDestino, currentBarco, fila[6]);
                 }
             });
 
@@ -111,36 +146,60 @@
     function crearFilaHtml(emp, dae, book, cli, term, dest, bar, cont) {
         return `
             <tr>
-                <td contenteditable="true">${emp || ''}</td>
+                <td contenteditable="true" class="fw-bold text-secondary">${emp || ''}</td>
                 <td contenteditable="true">${dae || ''}</td>
                 <td contenteditable="true">${book || ''}</td>
                 <td contenteditable="true">${cli || ''}</td>
                 <td contenteditable="true">${term || ''}</td>
                 <td contenteditable="true">${dest || ''}</td>
                 <td contenteditable="true">${bar || ''}</td>
-                <td contenteditable="true">${cont || ''}</td>
-                <td><button class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()"><i class="bi bi-trash"></i></button></td>
+                <td contenteditable="true" class="bg-light fw-bold">${cont || ''}</td>
+                <td class="text-center">
+                    <button class="btn btn-link text-danger p-0" onclick="this.parentElement.parentElement.remove()">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
+                </td>
             </tr>`;
     }
 
     function agregarFila() {
         const cuerpo = document.getElementById('cuerpoTabla');
-        cuerpo.insertAdjacentHTML('beforeend', crearFilaHtml('', '', '', '', '', '', '', ''));
+        cuerpo.insertAdjacentHTML('afterbegin', crearFilaHtml('', '', '', '', '', '', '', ''));
+        document.getElementById('seccionTabla').style.display = 'block';
     }
 
-    // --- LÓGICA PARA SUPABASE ---
+    // --- GUARDAR EN SUPABASE ---
     async function guardarEnBase() {
-        // Aquí conectarás con tu URL y KEY de Supabase
-        alert("¡Datos listos! Para guardar realmente, necesitamos configurar tus credenciales de Supabase en el código.");
-        // Ejemplo de recolección de datos de la tabla
         const filas = document.querySelectorAll("#cuerpoTabla tr");
-        const datosAEnviar = Array.from(filas).map(f => ({
+        if (filas.length === 0) return alert("No hay datos para guardar.");
+
+        const semanaActual = prompt("Ingrese el nombre o número de semana (Ej: Semana 06):");
+        if (!semanaActual) return;
+
+        const confirmacion = confirm(`¿Desea guardar ${filas.length} registros para la ${semanaActual}?`);
+        if (!confirmacion) return;
+
+        // Recolectar datos de la tabla editable
+        const datos = Array.from(filas).map(f => ({
+            semana: semanaActual,
             empresa: f.cells[0].innerText,
             dae: f.cells[1].innerText,
-            booking: f.cells[2].innerText
-            // ... etc
+            booking: f.cells[2].innerText,
+            cliente: f.cells[3].innerText,
+            terminal: f.cells[4].innerText,
+            destino: f.cells[5].innerText,
+            barco: f.cells[6].innerText,
+            contenedor: f.cells[7].innerText
         }));
-        console.log("Enviando a base de datos:", datosAEnviar);
+
+        console.log("Datos listos para enviar:", datos);
+        alert("En este punto, si configuras tus llaves de Supabase, los datos se enviarán a la nube automáticamente.");
+        
+        /* // CÓDIGO FINAL DE ENVÍO:
+        const { data, error } = await _supabase.from('reporte_daes').insert(datos);
+        if (error) alert("Error: " + error.message);
+        else alert("¡Guardado con éxito en la base de datos!");
+        */
     }
 </script>
 
