@@ -2,254 +2,162 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Distribución Diaria | Importador Excel</title>
+    <title>Revisión de Datos | Cargo Plan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
-    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
 
     <style>
-        body { background-color: #f4f7f6; font-size: 0.82rem; font-family: sans-serif; }
-        .navbar-custom { background: #1d6f42; color: white; padding: 10px 20px; shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        
-        .table-container { 
-            background: white; 
-            margin: 20px; 
-            border-radius: 8px; 
-            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-            overflow: hidden;
-        }
-
-        .excel-table { width: 100%; border-collapse: collapse; }
-        .excel-table th { 
-            background: #f1f3f4; 
-            color: #5f6368; 
-            font-weight: 600; 
-            text-transform: uppercase;
-            font-size: 0.75rem;
-            border: 1px solid #dadce0; 
-            padding: 10px;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-        }
-        .excel-table td { 
-            border: 1px solid #dadce0; 
-            padding: 6px 10px; 
-            outline: none; 
-            min-width: 120px;
-            white-space: nowrap;
-        }
-        .excel-table tr:hover { background-color: #f8f9fa; }
-        
-        .modificado { background-color: #fff9c4 !important; } /* Color amarillo para filas nuevas/editadas */
-        
-        #statusInfo { font-size: 0.9rem; font-weight: 500; }
-        .loading-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.8);
-            z-index: 2000;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
+        body { background-color: #f0f2f5; font-size: 0.8rem; }
+        .sticky-header { position: sticky; top: 0; background: #343a40; color: white; z-index: 100; }
+        .table-wrapper { height: 75vh; overflow-y: auto; background: white; border-radius: 5px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .excel-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+        .excel-table th, .excel-table td { border: 1px solid #dee2e6; padding: 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .excel-table td:focus { background: #e8f0fe; outline: 2px solid #0d6efd; }
+        .btn-excel { background: #1d6f42; color: white; }
+        .btn-excel:hover { background: #155733; color: white; }
+        /* Animación de carga */
+        #loader { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 1000; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 0 20px rgba(0,0,0,0.2); text-align: center; }
     </style>
 </head>
 <body>
 
-<div id="loadingOverlay" class="loading-overlay">
-    <div class="spinner-border text-success mb-2"></div>
-    <div id="loadingText">Procesando filas...</div>
+<div id="loader">
+    <div class="spinner-border text-success"></div>
+    <div class="mt-2 fw-bold">Procesando archivo...</div>
 </div>
 
-<nav class="navbar-custom d-flex justify-content-between align-items-center">
-    <div id="statusInfo">
-        <i class="bi bi-calendar3"></i> DISTRIBUCIÓN: <span id="lblDia" class="badge bg-white text-dark">---</span>
-        <span class="ms-3">SEMANA: <span id="lblSemana" class="badge bg-white text-dark">---</span></span>
+<div class="container-fluid p-3">
+    <div class="row mb-3 align-items-center">
+        <div class="col-md-6">
+            <h5 class="mb-0 text-uppercase fw-bold text-primary">
+                <i class="bi bi-table"></i> Distribución: <span id="lblDia">---</span> | Sem: <span id="lblSemana">---</span>
+            </h5>
+        </div>
+        <div class="col-md-6 text-end">
+            <input type="file" id="inputExcel" class="d-none" accept=".xlsx, .xls">
+            <button class="btn btn-excel btn-sm" onclick="document.getElementById('inputExcel').click()">
+                <i class="bi bi-file-earmark-excel"></i> 1. CARGAR EXCEL
+            </button>
+            <button class="btn btn-primary btn-sm ms-2" id="btnGuardar" onclick="guardarTodo()" disabled>
+                <i class="bi bi-cloud-check"></i> 2. GRABAR DATOS CORRECTOS
+            </button>
+        </div>
     </div>
-    <div class="d-flex gap-2">
-        <input type="file" id="inputExcel" class="d-none" accept=".xlsx, .xls">
-        <button class="btn btn-light btn-sm fw-bold" onclick="document.getElementById('inputExcel').click()">
-            <i class="bi bi-file-earmark-excel-fill text-success"></i> CARGAR EXCEL
-        </button>
-        <button id="btnGuardar" class="btn btn-warning btn-sm fw-bold" onclick="guardarTodo()">
-            <i class="bi bi-cloud-arrow-up-fill"></i> GUARDAR EN NUBE
-        </button>
-        <button class="btn btn-danger btn-sm" onclick="window.close()">
-            <i class="bi bi-x-lg"></i>
-        </button>
-    </div>
-</nav>
 
-<div class="table-container">
-    <div class="table-responsive" style="max-height: 85vh;">
-        <table class="excel-table">
-            <thead>
+    <div class="table-wrapper">
+        <table class="excel-table" id="tablaDatos">
+            <thead class="sticky-header">
                 <tr id="headerRow"></tr>
             </thead>
             <tbody id="bodyDiario">
-                <tr><td colspan="16" class="text-center p-5 text-muted">Haga clic en "Cargar Excel" para importar los datos del día.</td></tr>
+                <tr><td colspan="15" class="text-center py-5 text-muted">Cargue un archivo para empezar la revisión...</td></tr>
             </tbody>
         </table>
     </div>
 </div>
 
+
+
 <script>
-    // Configuración Supabase
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
-    
-    // Obtener parámetros de la URL
     const params = new URLSearchParams(window.location.search);
     const DIA = params.get('dia') || 'LUNES';
     const SEMANA = params.get('semana') || '0';
 
-    document.getElementById('lblDia').innerText = DIA.toUpperCase();
+    document.getElementById('lblDia').innerText = DIA;
     document.getElementById('lblSemana').innerText = SEMANA;
 
-    // Títulos exactos que requiere tu base de datos y macro
     const titulosIdeales = ["EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", "CONTENEDOR", "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"];
 
-    // Dibujar cabecera
-    const headerRow = document.getElementById('headerRow');
-    headerRow.innerHTML = titulosIdeales.map(t => `<th>${t}</th>`).join('') + '<th></th>';
+    // Dibujar Cabecera
+    document.getElementById('headerRow').innerHTML = titulosIdeales.map(t => `<th style="width:150px">${t}</th>`).join('');
 
-    // --- LÓGICA DE LECTURA DE EXCEL ---
     document.getElementById('inputExcel').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
 
+        const loader = document.getElementById('loader');
+        loader.style.display = 'block';
+
         const reader = new FileReader();
-        document.getElementById('loadingOverlay').style.display = 'flex';
+        reader.onload = function(evt) {
+            const data = new Uint8Array(evt.target.result);
+            const workbook = XLSX.read(data, {type: 'array'});
+            
+            // Buscar hoja
+            const sheetName = workbook.SheetNames.find(n => n.toUpperCase().includes(DIA.toUpperCase())) || workbook.SheetNames[0];
+            const ws = workbook.Sheets[sheetName];
+            const jsonData = XLSX.utils.sheet_to_json(ws, {header: 1});
 
-        reader.onload = async function(event) {
-            try {
-                const data = new Uint8Array(event.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                
-                // Buscar hoja que coincida con el día (LUNES, MARTES...)
-                const nombreHojaMatch = workbook.SheetNames.find(n => n.toUpperCase().trim() === DIA.toUpperCase().trim());
-                const ws = workbook.Sheets[nombreHojaMatch || workbook.SheetNames[0]];
-
-                if (!nombreHojaMatch) {
-                    alert("Aviso: No se encontró la hoja '" + DIA + "'. Se cargará la primera hoja disponible.");
-                }
-
-                const jsonData = XLSX.utils.sheet_to_json(ws, { header: 1 });
-                if (jsonData.length === 0) throw new Error("El archivo está vacío");
-
+            if (jsonData.length > 0) {
                 const headers = jsonData[0].map(h => h ? h.toString().toUpperCase().trim() : "");
                 const rows = jsonData.slice(1);
-
-                const tablaBody = document.getElementById('bodyDiario');
-                tablaBody.innerHTML = ""; 
-
-                // RENDERIZADO POR LOTES (Para no congelar el navegador)
-                for (let i = 0; i < rows.length; i++) {
-                    const rowData = rows[i];
-                    if (rowData.length === 0) continue; // Saltar filas vacías
-
-                    let tr = document.createElement('tr');
-                    tr.classList.add('modificado');
-
+                
+                // --- OPTIMIZACIÓN: Fragmento de Documento ---
+                const fragment = document.createDocumentFragment();
+                
+                rows.forEach(rowData => {
+                    if (rowData.length === 0) return;
+                    const tr = document.createElement('tr');
+                    
                     titulosIdeales.forEach(titulo => {
-                        // Búsqueda de columna inteligente
-                        let colIdx = headers.findIndex(h => h === titulo || h.includes(titulo.substring(0,4)));
-                        let valor = colIdx !== -1 ? rowData[colIdx] : "";
+                        const colIdx = headers.findIndex(h => h.includes(titulo.substring(0,4)));
+                        const valor = colIdx !== -1 ? rowData[colIdx] : "";
                         
-                        let td = document.createElement('td');
+                        const td = document.createElement('td');
                         td.contentEditable = "true";
                         td.innerText = valor || "";
-                        td.oninput = () => tr.classList.add('modificado');
                         tr.appendChild(td);
                     });
+                    fragment.appendChild(tr);
+                });
 
-                    // Botón eliminar fila
-                    let tdAccion = document.createElement('td');
-                    tdAccion.className = "text-center";
-                    tdAccion.innerHTML = `<i class="bi bi-trash text-danger" style="cursor:pointer" onclick="this.parentElement.parentElement.remove()"></i>`;
-                    tr.appendChild(tdAccion);
-
-                    tablaBody.appendChild(tr);
-
-                    // Pausa técnica cada 30 filas para refrescar la UI
-                    if (i % 30 === 0) {
-                        document.getElementById('loadingText').innerText = `Dibujando fila ${i} de ${rows.length}...`;
-                        await new Promise(res => setTimeout(res, 1));
-                    }
-                }
-
-            } catch (err) {
-                alert("Error procesando Excel: " + err.message);
-            } finally {
-                document.getElementById('loadingOverlay').style.display = 'none';
-                e.target.value = ""; // Limpiar input
+                const body = document.getElementById('bodyDiario');
+                body.innerHTML = "";
+                body.appendChild(fragment); // Inserción única (Ultra rápido)
+                
+                document.getElementById('btnGuardar').disabled = false;
             }
+            loader.style.display = 'none';
         };
         reader.readAsArrayBuffer(file);
     });
 
-    // --- GUARDAR EN SUPABASE ---
     async function guardarTodo() {
-        const filas = document.querySelectorAll('#bodyDiario tr.modificado');
-        if (filas.length === 0) return alert("No hay cambios pendientes o datos cargados.");
-
         const btn = document.getElementById('btnGuardar');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> GRABANDO...';
+
+        const filas = document.querySelectorAll('#bodyDiario tr');
+        const dataInsert = Array.from(filas).map(tr => {
+            const c = tr.cells;
+            return {
+                semana: SEMANA, dia: DIA,
+                empresa: c[0].innerText, proveedor: c[1].innerText, deposito: c[2].innerText,
+                terminal: c[3].innerText, buque: c[4].innerText, booking: c[5].innerText,
+                marca: c[6].innerText, codigo: c[7].innerText, productor: c[8].innerText,
+                finca: c[9].innerText, contenedor: c[10].innerText, chofer: c[11].innerText,
+                cedula: c[12].innerText, placa: c[13].innerText, supervisor: c[14].innerText
+            };
+        });
 
         try {
-            const listaDatos = Array.from(filas).map(fila => {
-                const c = fila.cells;
-                return {
-                    semana: SEMANA,
-                    dia: DIA,
-                    empresa: c[0].innerText.trim(),
-                    proveedor: c[1].innerText.trim(),
-                    deposito: c[2].innerText.trim(),
-                    terminal: c[3].innerText.trim(),
-                    buque: c[4].innerText.trim(),
-                    booking: c[5].innerText.trim(),
-                    marca: c[6].innerText.trim(),
-                    codigo: c[7].innerText.trim(),
-                    productor: c[8].innerText.trim(),
-                    finca: c[9].innerText.trim(),
-                    contenedor: c[10].innerText.trim(),
-                    chofer: c[11].innerText.trim(),
-                    cedula: c[12].innerText.trim(),
-                    placa: c[13].innerText.trim(),
-                    supervisor: c[14].innerText.trim()
-                };
-            });
-
-            // 1. Limpiar datos anteriores del mismo día/semana para evitar duplicados
-            const { error: delError } = await _supabase.from('distribucion_diaria')
-                .delete()
-                .eq('semana', SEMANA)
-                .eq('dia', DIA);
+            // Borrar lo previo de ese día
+            await _supabase.from('distribucion_diaria').delete().eq('semana', SEMANA).eq('dia', DIA);
             
-            if (delError) throw delError;
+            // Insertar todo (Supabase aguanta hasta 1000 filas de golpe fácil)
+            const { error } = await _supabase.from('distribucion_diaria').insert(dataInsert);
+            if (error) throw error;
 
-            // 2. Insertar en bloques de 50 para máxima velocidad
-            for (let i = 0; i < listaDatos.length; i += 50) {
-                const bloque = listaDatos.slice(i, i + 50);
-                const { error: insError } = await _supabase.from('distribucion_diaria').insert(bloque);
-                if (insError) throw insError;
-            }
-
-            alert("¡Sincronización Exitosa! Se guardaron " + listaDatos.length + " registros.");
+            alert("¡Datos grabados correctamente en la base de datos!");
             window.close();
-
-        } catch (err) {
-            alert("Error al guardar: " + err.message);
-        } finally {
+        } catch (e) {
+            alert("Error: " + e.message);
             btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-cloud-arrow-up-fill"></i> GUARDAR EN NUBE';
         }
     }
 </script>
-
 </body>
 </html>
