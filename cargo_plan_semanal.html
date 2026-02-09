@@ -18,6 +18,12 @@
         .badge-status { font-size: 0.7rem; padding: 5px 10px; border-radius: 20px; }
         .dia-nombre { font-weight: bold; font-size: 1.2rem; color: #1d6f42; }
         .stats { font-size: 0.85rem; color: #666; }
+        /* Estilo para las etiquetas de consolidación */
+        .consolidacion-tag { 
+            display: flex; justify-content: space-between; 
+            background: #f8f9fa; padding: 2px 8px; border-radius: 4px; margin-bottom: 2px;
+            font-size: 0.8rem; border-left: 3px solid #1d6f42;
+        }
     </style>
 </head>
 <body>
@@ -46,12 +52,34 @@
         const container = document.getElementById('gridDias');
         container.innerHTML = '<div class="text-center w-100 py-5"><div class="spinner-border text-success"></div></div>';
 
-        const { data: conteos } = await _supabase.from('distribucion_diaria').select('dia').eq('semana', sem);
+        // Traemos dia y consolidacion para agrupar
+        const { data: registros } = await _supabase
+            .from('distribucion_diaria')
+            .select('dia, consolidacion')
+            .eq('semana', sem);
 
         container.innerHTML = "";
         diasSemana.forEach(dia => {
-            const numRegistros = conteos ? conteos.filter(r => r.dia === dia).length : 0;
+            const dataDia = registros ? registros.filter(r => r.dia === dia) : [];
+            const numRegistros = dataDia.length;
             const estaCargado = numRegistros > 0;
+
+            // Lógica para contar consolidaciones
+            const resumenConsolidacion = {};
+            dataDia.forEach(r => {
+                const tipo = r.consolidacion || "SIN TIPO";
+                resumenConsolidacion[tipo] = (resumenConsolidacion[tipo] || 0) + 1;
+            });
+
+            // Generar HTML de las etiquetas de consolidación
+            let consolidacionHTML = "";
+            for (const [key, val] of Object.entries(resumenConsolidacion)) {
+                consolidacionHTML += `
+                    <div class="consolidacion-tag">
+                        <span>${key}</span>
+                        <span class="fw-bold text-dark">${val}</span>
+                    </div>`;
+            }
 
             const col = document.createElement('div');
             col.className = 'col-md-4 col-sm-6';
@@ -63,10 +91,13 @@
                             ${estaCargado ? 'CON DATOS' : 'VACÍO'}
                         </span>
                     </div>
-                    <div class="stats">
-                        <p class="mb-1"><i class="bi bi-box-seam"></i> <b>${numRegistros}</b> Contenedores</p>
+                    <div class="stats mb-3">
+                        <p class="mb-2"><i class="bi bi-box-seam text-success"></i> TOTAL: <b>${numRegistros}</b></p>
+                        <div class="resumen-lista">
+                            ${consolidacionHTML || '<small class="text-muted">Sin registros manuales</small>'}
+                        </div>
                     </div>
-                    <hr>
+                    <hr class="mt-auto">
                     <div class="d-flex justify-content-between">
                         <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); irAImportar('${dia}')">Importar</button>
                         <button class="btn btn-primary btn-sm">Planificar</button>
