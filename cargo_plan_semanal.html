@@ -14,11 +14,21 @@
             transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
         .card-dia:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
-        .header-semana { background: #1d6f42; color: white; border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+        .header-semana { background: #1d6f42; color: white; border-radius: 12px 12px 0 0; padding: 20px; }
+        
+        /* Nueva sección de totales generales */
+        .resumen-general { 
+            background: #ffffff; border-radius: 0 0 12px 12px; padding: 15px 20px; 
+            margin-bottom: 30px; border: 1px solid #e0e0e0; border-top: none;
+            display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+        }
+        .total-item { background: #f8f9fa; padding: 8px 15px; border-radius: 8px; border-left: 4px solid #1d6f42; }
+        .total-label { font-size: 0.75rem; color: #666; text-transform: uppercase; font-weight: bold; display: block; }
+        .total-value { font-size: 1.2rem; font-weight: 800; color: #1d6f42; }
+
         .badge-status { font-size: 0.7rem; padding: 5px 10px; border-radius: 20px; }
         .dia-nombre { font-weight: bold; font-size: 1.2rem; color: #1d6f42; }
         .stats { font-size: 0.85rem; color: #666; }
-        /* Estilo para las etiquetas de consolidación */
         .consolidacion-tag { 
             display: flex; justify-content: space-between; 
             background: #f8f9fa; padding: 2px 8px; border-radius: 4px; margin-bottom: 2px;
@@ -40,6 +50,15 @@
         </div>
     </div>
 
+    <div class="resumen-general" id="resumenGeneral">
+        <div class="total-item">
+            <span class="total-label">Total Semana</span>
+            <span class="total-value" id="valTotalGeneral">0</span>
+        </div>
+        <div id="desgloseGeneral" class="d-flex gap-2 flex-wrap">
+            </div>
+    </div>
+
     <div class="row g-4" id="gridDias"></div>
 </div>
 
@@ -50,28 +69,49 @@
     async function renderizarDashboard() {
         const sem = document.getElementById('inputSemana').value;
         const container = document.getElementById('gridDias');
+        const desgloseGralContainer = document.getElementById('desgloseGeneral');
+        
         container.innerHTML = '<div class="text-center w-100 py-5"><div class="spinner-border text-success"></div></div>';
 
-        // Traemos dia y consolidacion para agrupar
         const { data: registros } = await _supabase
             .from('distribucion_diaria')
             .select('dia, consolidacion')
             .eq('semana', sem);
 
+        // --- LÓGICA RESUMEN GENERAL ---
+        const totalSemana = registros ? registros.length : 0;
+        document.getElementById('valTotalGeneral').innerText = totalSemana;
+
+        const globalConsolidacion = {};
+        if (registros) {
+            registros.forEach(r => {
+                const tipo = r.consolidacion || "SIN TIPO";
+                globalConsolidacion[tipo] = (globalConsolidacion[tipo] || 0) + 1;
+            });
+        }
+
+        desgloseGralContainer.innerHTML = "";
+        for (const [key, val] of Object.entries(globalConsolidacion)) {
+            const div = document.createElement('div');
+            div.className = 'total-item';
+            div.style.borderLeftColor = "#ffc107"; // Color diferente para diferenciar del total general
+            div.innerHTML = `<span class="total-label">${key}</span><span class="total-value">${val}</span>`;
+            desgloseGralContainer.appendChild(div);
+        }
+
+        // --- LÓGICA DE TARJETAS POR DÍA ---
         container.innerHTML = "";
         diasSemana.forEach(dia => {
             const dataDia = registros ? registros.filter(r => r.dia === dia) : [];
             const numRegistros = dataDia.length;
             const estaCargado = numRegistros > 0;
 
-            // Lógica para contar consolidaciones
             const resumenConsolidacion = {};
             dataDia.forEach(r => {
                 const tipo = r.consolidacion || "SIN TIPO";
                 resumenConsolidacion[tipo] = (resumenConsolidacion[tipo] || 0) + 1;
             });
 
-            // Generar HTML de las etiquetas de consolidación
             let consolidacionHTML = "";
             for (const [key, val] of Object.entries(resumenConsolidacion)) {
                 consolidacionHTML += `
@@ -94,7 +134,7 @@
                     <div class="stats mb-3">
                         <p class="mb-2"><i class="bi bi-box-seam text-success"></i> TOTAL: <b>${numRegistros}</b></p>
                         <div class="resumen-lista">
-                            ${consolidacionHTML || '<small class="text-muted">Sin registros manuales</small>'}
+                            ${consolidacionHTML || '<small class="text-muted">Sin registros</small>'}
                         </div>
                     </div>
                     <hr class="mt-auto">
