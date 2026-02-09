@@ -12,10 +12,10 @@
         .table-container { margin: 10px; background: white; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: auto; height: calc(100vh - 100px); }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th { background: #34495e; color: white; position: sticky; top: 0; z-index: 10; padding: 10px; font-size: 10px; border: 1px solid #455a64; text-align: center; }
-        td { padding: 5px; border: 1px solid #dee2e6; outline: none; }
+        td { padding: 5px; border: 1px solid #dee2e6; outline: none; word-wrap: break-word; }
         tr:nth-child(even) { background-color: #fcfcfc; }
         td[contenteditable="true"]:focus { background: #fffde7; border: 2px solid #f1c40f !important; }
-        .col-manual { background-color: #fafffa; } /* Color sutil para identificar campos manuales */
+        .col-manual { background-color: #fafffa; }
         .badge-week { background: #e67e22; padding: 4px 8px; border-radius: 4px; }
     </style>
 </head>
@@ -47,12 +47,11 @@
                 <th style="width: 90px;">PUERTO</th>
                 <th style="width: 110px;">DESTINOS</th>
                 <th style="width: 80px;" class="col-manual">CANT. CAJAS</th>
-                <th style="width: 100px;" class="col-manual">CAMPO</th>
+                <th style="width: 100px;" class="col-manual">CAMPO/CIUDAD</th>
                 <th style="width: 150px;" class="col-manual">OBSERVACIÓN</th>
             </tr>
         </thead>
-        <tbody id="bodyInforme">
-            </tbody>
+        <tbody id="bodyInforme"></tbody>
     </table>
 </div>
 
@@ -64,49 +63,65 @@
 
     async function cargarInforme() {
         const body = document.getElementById('bodyInforme');
-        body.innerHTML = '<tr><td colspan="13" class="text-center py-5">Generando matriz de contenedores...</td></tr>';
+        body.innerHTML = '<tr><td colspan="13" class="text-center py-5">Sincronizando datos de planificación y DAES...</td></tr>';
 
         try {
-            // 1. Datos de DAES
-            const { data: daes } = await _supabase.from('cargo_plan_daes').select('*').eq('semana', SEMANA);
-            // 2. Datos de Planificación (Contenedores reales)
-            const { data: planif } = await _supabase.from('distribucion_diaria').select('booking, contenedor').eq('semana', SEMANA).not('contenedor', 'eq', '');
-            // 3. Datos previos del Informe (para no perder lo que ya se escribió manual)
-            const { data: informePrevio } = await _supabase.from('informe_contenedores_final').select('*').eq('semana', SEMANA);
+            // 1. Obtener la planificación real (donde están los contenedores asignados y marcas)
+            const { data: planif } = await _supabase
+                .from('distribucion_diaria')
+                .select('booking, contenedor, marca, terminal, consolidacion')
+                .eq('semana', SEMANA)
+                .not('contenedor', 'is', null)
+                .not('contenedor', 'eq', '');
 
-            if (!daes) return body.innerHTML = '<tr><td colspan="13">No hay datos de DAES.</td></tr>';
+            // 2. Obtener la base de DAES para cruzar por Booking
+            const { data: daes } = await _supabase
+                .from('cargo_plan_daes')
+                .select('*')
+                .eq('semana', SEMANA);
+
+            // 3. Obtener datos guardados previamente en este informe
+            const { data: informePrevio } = await _supabase
+                .from('informe_contenedores_final')
+                .select('*')
+                .eq('semana', SEMANA);
+
+            if (!planif || planif.length === 0) {
+                body.innerHTML = '<tr><td colspan="13" class="text-center py-5">No hay contenedores planificados con número asignado esta semana.</td></tr>';
+                return;
+            }
 
             let html = "";
-            daes.forEach(d => {
-                const numFilas = parseInt(d.cont) || 1;
-                const contPlanificados = planif ? planif.filter(p => p.booking === d.booking) : [];
+            planif.forEach((p, index) => {
+                // BUSQUEDA POR BOOKING: Cruzamos con la tabla de DAES
+                const d = daes ? daes.find(item => item.booking === p.booking) : {};
+                
+                // Buscar si hay datos manuales previos para este contenedor específico
+                const prev = (informePrevio || []).find(ip => ip.contenedor === p.contenedor) || {};
 
-                for (let i = 0; i < numFilas; i++) {
-                    const contActual = contPlanificados[i]?.contenedor || "";
-                    // Buscar si ya existía información manual guardada para este booking y este contenedor (o índice)
-                    const prev = (informePrevio || []).find(p => p.booking === d.booking && p.indice_fila === i) || {};
-
-                    html += `
-                        <tr data-booking="${d.booking}" data-indice="${i}">
-                            <td>${d.naviera || ''}</td>
-                            <td>${d.marca || ''}</td>
-                            <td>${d.vapor || ''}</td>
-                            <td>${d.dae || ''}</td>
-                            <td class="fw-bold text-primary">${contActual}</td>
-                            <td>${d.booking}</td>
-                            <td contenteditable="true" class="col-manual" data-campo="fecha_creacion">${prev.fecha_creacion || ''}</td>
-                            <td contenteditable="true" class="col-manual" data-campo="fecha_puerto">${prev.fecha_puerto || ''}</td>
-                            <td>${d.puerto || ''}</td>
-                            <td>${d.destino || ''}</td>
-                            <td contenteditable="true" class="col-manual" data-campo="cajas">${prev.cajas || ''}</td>
-                            <td contenteditable="true" class="col-manual" data-campo="campo">${prev.campo || ''}</td>
-                            <td contenteditable="true" class="col-manual" data-campo="observacion">${prev.observacion || ''}</td>
-                        </tr>
-                    `;
-                }
+                html += `
+                    <tr data-booking="${p.booking}" data-contenedor="${p.contenedor}">
+                        <td>${d.naviera || ''}</td>
+                        <td>${p.marca || ''}</td>
+                        <td>${d.vapor || ''}</td>
+                        <td>${d.dae || ''}</td>
+                        <td class="fw-bold text-primary">${p.contenedor}</td>
+                        <td>${p.booking}</td>
+                        <td contenteditable="true" class="col-manual" data-campo="fecha_creacion">${prev.fecha_creacion || ''}</td>
+                        <td contenteditable="true" class="col-manual" data-campo="fecha_puerto">${prev.fecha_puerto || ''}</td>
+                        <td>${p.terminal || d.puerto || ''}</td>
+                        <td>${d.destino || ''}</td>
+                        <td contenteditable="true" class="col-manual" data-campo="cajas">${prev.cajas || ''}</td>
+                        <td contenteditable="true" class="col-manual" data-campo="campo">${prev.campo || p.consolidacion || ''}</td>
+                        <td contenteditable="true" class="col-manual" data-campo="observacion">${prev.observacion || ''}</td>
+                    </tr>
+                `;
             });
             body.innerHTML = html;
-        } catch (err) { console.error(err); }
+        } catch (err) { 
+            console.error(err);
+            body.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Error al cargar datos.</td></tr>';
+        }
     }
 
     async function guardarInforme() {
@@ -117,17 +132,17 @@
             const item = {
                 semana: SEMANA,
                 booking: tr.dataset.booking,
-                indice_fila: parseInt(tr.dataset.indice),
+                contenedor: tr.dataset.contenedor,
                 fecha_creacion: tr.querySelector('[data-campo="fecha_creacion"]').innerText,
                 fecha_puerto: tr.querySelector('[data-campo="fecha_puerto"]').innerText,
                 cajas: tr.querySelector('[data-campo="cajas"]').innerText,
                 campo: tr.querySelector('[data-campo="campo"]').innerText,
                 observacion: tr.querySelector('[data-campo="observacion"]').innerText
             };
-            registros.push(item);
+            if(item.contenedor) registros.push(item);
         });
 
-        const { error } = await _supabase.from('informe_contenedores_final').upsert(registros, { onConflict: 'semana, booking, indice_fila' });
+        const { error } = await _supabase.from('informe_contenedores_final').upsert(registros, { onConflict: 'semana, contenedor' });
         
         if (!error) alert("¡Informe guardado correctamente!");
         else alert("Error al guardar: " + error.message);
@@ -136,7 +151,11 @@
     function exportarExcel() {
         const table = document.getElementById("tablaInforme");
         const html = table.outerHTML;
-        window.open('data:application/vnd.ms-excel,' + encodeURIComponent(html));
+        const url = 'data:application/vnd.ms-excel,' + encodeURIComponent(html);
+        const link = document.createElement("a");
+        link.download = `Informe_Semana_${SEMANA}.xls`;
+        link.href = url;
+        link.click();
     }
 
     cargarInforme();
