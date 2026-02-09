@@ -15,22 +15,26 @@
         th { background: #343a40; color: white; position: sticky; top: 0; padding: 10px; border: 1px solid #454d55; }
         td { border: 1px solid #eee; padding: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; color: white; flex-direction: column; }
+        /* Estilo para el estado bloqueado */
+        .bloqueado { background: #fee2e2 !important; border-color: #ef4444 !important; }
+        .msg-bloqueo { display: none; color: #dc3545; font-weight: bold; margin-left: 15px; }
     </style>
 </head>
 <body>
 
 <div id="loader" class="loading-overlay">
     <div class="spinner-border text-light"></div>
-    <h5 class="mt-3">Grabando en Base de Datos...</h5>
+    <h5 class="mt-3" id="loaderText">Procesando...</h5>
 </div>
 
-<div class="header-excel d-flex justify-content-between align-items-center">
+<div class="header-excel d-flex justify-content-between align-items-center" id="barraSuperior">
     <div>
         <i class="bi bi-file-earmark-excel"></i> <b>IMPORTAR: <span id="lblDia">---</span></b>
+        <span id="msgBloqueado" class="msg-bloqueo"><i class="bi bi-lock-fill"></i> DÍA BLOQUEADO (YA GRABADO)</span>
     </div>
     <div class="d-flex gap-2">
         <input type="file" id="inputExcel" class="d-none" accept=".xlsx, .xls">
-        <button class="btn btn-light btn-sm fw-bold" onclick="document.getElementById('inputExcel').click()">SELECCIONAR EXCEL</button>
+        <button id="btnSeleccionar" class="btn btn-light btn-sm fw-bold" onclick="document.getElementById('inputExcel').click()">SELECCIONAR EXCEL</button>
         <button class="btn btn-warning btn-sm fw-bold" id="btnGrabar" onclick="grabarDatos()" disabled>GRABAR DATOS</button>
     </div>
 </div>
@@ -45,7 +49,6 @@
 </div>
 
 <script>
-    // VERIFICA QUE ESTA URL SEA EXACTAMENTE LA DE TU DASHBOARD DE SUPABASE
     const PROJECT_URL = 'https://vqxdmmtashwloobkhbva.supabase.co';
     const PROJECT_KEY = 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC';
     const _supabase = supabase.createClient(PROJECT_URL, PROJECT_KEY);
@@ -60,6 +63,27 @@
     document.getElementById('hRow').innerHTML = titulos.map(t => `<th style="width:140px">${t}</th>`).join('');
 
     let datosParaBD = [];
+
+    // --- 1. FUNCIÓN QUE VERIFICA BLOQUEO AL CARGAR ---
+    async function verificarEstado() {
+        const { data, error } = await _supabase
+            .from('distribucion_diaria')
+            .select('id')
+            .match({ semana: SEMANA, dia: DIA })
+            .limit(1);
+
+        if (data && data.length > 0) {
+            // Si hay datos, bloqueamos todo
+            document.getElementById('btnSeleccionar').disabled = true;
+            document.getElementById('btnGrabar').disabled = true;
+            document.getElementById('msgBloqueado').style.display = 'inline';
+            document.getElementById('barraSuperior').classList.add('bloqueado');
+            document.getElementById('bBody').innerHTML = `<tr><td colspan="15" class="text-center py-5 text-danger fw-bold">ESTE DÍA YA FUE GRABADO. PARA MODIFICARLO, DEBE LIBERARLO DESDE EL PANEL DE CONTROL.</td></tr>`;
+        }
+    }
+
+    // Ejecutar verificación al abrir
+    verificarEstado();
 
     document.getElementById('inputExcel').addEventListener('change', function(e) {
         const reader = new FileReader();
@@ -76,7 +100,7 @@
                 datosParaBD = [];
 
                 for(let i=1; i<raw.length; i++) {
-                    if(!raw[i][idxs[5]] && !raw[i][idxs[10]]) continue; // Booking o Contenedor obligatorio
+                    if(!raw[i][idxs[5]] && !raw[i][idxs[10]]) continue; 
 
                     let filaObjeto = { semana: SEMANA, dia: DIA };
                     html += "<tr>";
@@ -98,37 +122,29 @@
 
     async function grabarDatos() {
         document.getElementById('loader').style.display = 'flex';
+        document.getElementById('loaderText').innerText = "Grabando en Base de Datos...";
         const btn = document.getElementById('btnGrabar');
         btn.disabled = true;
 
         try {
-            // VERIFICACIÓN DE TABLAS - Asegúrate que existan en tu Supabase con estos nombres exactos
             const TABLA_DIARIA = 'distribucion_diaria';
             const TABLA_SABANA = 'sabana_semanal';
 
-            // 1. Limpiar datos viejos
-            const { error: errDel1 } = await _supabase.from(TABLA_DIARIA).delete().match({ semana: SEMANA, dia: DIA });
-            if (errDel1) throw new Error(`Error en Delete ${TABLA_DIARIA}: ${errDel1.message}`);
-
-            const { error: errDel2 } = await _supabase.from(TABLA_SABANA).delete().match({ semana: SEMANA, dia: DIA });
-            if (errDel2) throw new Error(`Error en Delete ${TABLA_SABANA}: ${errDel2.message}`);
-
-            // 2. Insertar nuevos
+            // Insertar datos (Carga masiva)
             const { error: errIns1 } = await _supabase.from(TABLA_DIARIA).insert(datosParaBD);
-            if (errIns1) throw new Error(`Error en Insert ${TABLA_DIARIA}: ${errIns1.message}`);
+            if (errIns1) throw errIns1;
 
             const { error: errIns2 } = await _supabase.from(TABLA_SABANA).insert(datosParaBD);
-            if (errIns2) throw new Error(`Error en Insert ${TABLA_SABANA}: ${errIns2.message}`);
+            if (errIns2) throw errIns2;
 
-            alert(`¡Éxito! Se grabaron ${datosParaBD.length} registros correctamente.`);
-            window.close();
+            alert(`¡Grabado con éxito! El día ha sido bloqueado.`);
+            window.location.reload(); // Recargamos para que se aplique el bloqueo visual
 
         } catch (e) {
-            console.error(e);
-            alert("FALLO CRÍTICO:\n" + e.message + "\n\nVerifique que los nombres de las tablas en Supabase sean 'distribucion_diaria' y 'sabana_semanal'.");
+            alert("Error: " + e.message);
+            btn.disabled = false;
         } finally {
             document.getElementById('loader').style.display = 'none';
-            btn.disabled = false;
         }
     }
 </script>
