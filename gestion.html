@@ -240,45 +240,54 @@
     }
 
     async function guardarCambios() {
-        const btn = document.querySelector(".btn-save");
-        const filasModificadas = document.querySelectorAll("#gridBody tr.fila-modificada, #gridBody tr:not([data-id])");
+    const btn = document.querySelector(".btn-save");
+    // Seleccionamos filas marcadas como modificadas o nuevas (sin data-id)
+    const filasModificadas = document.querySelectorAll("#gridBody tr.fila-modificada, #gridBody tr:not([data-id])");
 
-        if (filasModificadas.length === 0) return alert("No hay cambios pendientes.");
+    if (filasModificadas.length === 0) return alert("No hay cambios pendientes.");
 
-        btn.disabled = true;
-        const semana = document.getElementById('selectSemana').value;
+    btn.disabled = true;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
-        try {
-            for (const fila of filasModificadas) {
-                const id = fila.getAttribute('data-id');
-                const datos = {
-                    semana: semana,
-                    empresa: fila.cells[0].innerText.trim(),
-                    dae: fila.cells[1].innerText.trim(),
-                    booking: fila.cells[2].innerText.trim(),
-                    cliente: fila.cells[3].innerText.trim(),
-                    terminal: fila.cells[4].innerText.trim(),
-                    destino: fila.cells[5].innerText.trim(),
-                    barco: fila.cells[6].innerText.trim(),
-                    cont: fila.cells[7].innerText.trim() // Usamos 'cont' para la cantidad
-                };
+    const semana = document.getElementById('selectSemana').value;
 
-                if (id) {
-                    await _supabase.from('reporte_daes').update(datos).eq('id', id);
-                } else {
-                    await _supabase.from('reporte_daes').insert([datos]);
-                }
-                fila.classList.remove('fila-modificada');
+    try {
+        for (const fila of filasModificadas) {
+            const id = fila.getAttribute('data-id');
+            const datos = {
+                semana: semana,
+                empresa: fila.cells[0].innerText.trim(),
+                dae: fila.cells[1].innerText.trim(),
+                booking: fila.cells[2].innerText.trim(),
+                cliente: fila.cells[3].innerText.trim(),
+                terminal: fila.cells[4].innerText.trim(),
+                destino: fila.cells[5].innerText.trim(),
+                barco: fila.cells[6].innerText.trim(),
+                cont: fila.cells[7].innerText.trim()
+            };
+
+            if (id && id !== "") {
+                // ACTUALIZAR
+                const { error } = await _supabase.from('reporte_daes').update(datos).eq('id', id);
+                if (error) throw error;
+            } else {
+                // INSERTAR NUEVO
+                const { error } = await _supabase.from('reporte_daes').insert([datos]);
+                if (error) throw error;
             }
-            alert("¡Cambios guardados!");
-            await cargarDatosSemana();
-        } catch (err) {
-            alert("Error: " + err.message);
-        } finally {
-            btn.disabled = false;
+            fila.classList.remove('fila-modificada');
         }
+        alert("¡Cambios guardados con éxito!");
+        await cargarDatosSemana(); // Recargar para obtener los nuevos IDs
+    } catch (err) {
+        console.error("Error completo de Supabase:", err);
+        alert("Error al guardar: " + (err.message || "Ver consola"));
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
     }
-
+}
     function agregarFilaVacia() {
         const body = document.getElementById('gridBody');
         body.insertAdjacentHTML('afterbegin', crearFilaHtml({}));
