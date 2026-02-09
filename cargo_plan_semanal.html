@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Cargo Plan Semanal | Control Central</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .wrapper { max-width: 1200px; margin: 30px auto; padding: 20px; }
+        .card-dia { 
+            background: white; border-radius: 12px; border: none; 
+            transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .card-dia:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .header-semana { background: #1d6f42; color: white; border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+        .badge-status { font-size: 0.7rem; padding: 5px 10px; border-radius: 20px; }
+        .dia-nombre { font-weight: bold; font-size: 1.2rem; color: #1d6f42; }
+        .stats { font-size: 0.85rem; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="wrapper">
+    <div class="header-semana d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-calendar-range"></i> CARGO PLAN SEMANAL</h2>
+            <p class="mb-0 opacity-75">Gestión de distribución de fincas y logística</p>
+        </div>
+        <div class="text-end">
+            <label class="small d-block fw-bold">SEMANA TRABAJADA:</label>
+            <input type="number" id="inputSemana" class="form-control form-control-lg fw-bold text-center" value="6" style="width: 100px; display: inline-block;">
+        </div>
+    </div>
+
+    <div class="row g-4" id="gridDias"></div>
+</div>
+
+<script>
+    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+    const diasSemana = ["LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
+    
+    async function renderizarDashboard() {
+        const sem = document.getElementById('inputSemana').value;
+        const container = document.getElementById('gridDias');
+        container.innerHTML = '<div class="text-center w-100 py-5"><div class="spinner-border text-success"></div></div>';
+
+        const { data: conteos } = await _supabase.from('distribucion_diaria').select('dia').eq('semana', sem);
+
+        container.innerHTML = "";
+        diasSemana.forEach(dia => {
+            const numRegistros = conteos ? conteos.filter(r => r.dia === dia).length : 0;
+            const estaCargado = numRegistros > 0;
+
+            const col = document.createElement('div');
+            col.className = 'col-md-4 col-sm-6';
+            col.innerHTML = `
+                <div class="card card-dia p-4 h-100" onclick="irAPlanificacion('${dia}')">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="dia-nombre">${dia}</span>
+                        <span class="badge ${estaCargado ? 'bg-success' : 'bg-secondary'} badge-status">
+                            ${estaCargado ? 'CON DATOS' : 'VACÍO'}
+                        </span>
+                    </div>
+                    <div class="stats">
+                        <p class="mb-1"><i class="bi bi-box-seam"></i> <b>${numRegistros}</b> Contenedores</p>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); irAImportar('${dia}')">Importar</button>
+                        <button class="btn btn-primary btn-sm">Planificar</button>
+                    </div>
+                </div>`;
+            container.appendChild(col);
+        });
+    }
+
+    function irAPlanificacion(dia) {
+        const sem = document.getElementById('inputSemana').value;
+        window.location.href = `planificacion_diaria.html?dia=${dia}&semana=${sem}`;
+    }
+
+    function irAImportar(dia) {
+        const sem = document.getElementById('inputSemana').value;
+        window.location.href = `diario.html?dia=${dia}&semana=${sem}`;
+    }
+
+    document.getElementById('inputSemana').addEventListener('change', renderizarDashboard);
+    renderizarDashboard();
+</script>
+</body>
+</html>
