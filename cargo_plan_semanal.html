@@ -16,15 +16,20 @@
         .card-dia:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
         .header-semana { background: #1d6f42; color: white; border-radius: 12px 12px 0 0; padding: 20px; }
         
-        /* Nueva sección de totales generales */
         .resumen-general { 
             background: #ffffff; border-radius: 0 0 12px 12px; padding: 15px 20px; 
             margin-bottom: 30px; border: 1px solid #e0e0e0; border-top: none;
-            display: flex; gap: 20px; flex-wrap: wrap; align-items: center;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;
         }
         .total-item { background: #f8f9fa; padding: 8px 15px; border-radius: 8px; border-left: 4px solid #1d6f42; }
         .total-label { font-size: 0.75rem; color: #666; text-transform: uppercase; font-weight: bold; display: block; }
         .total-value { font-size: 1.2rem; font-weight: 800; color: #1d6f42; }
+
+        .btn-informe { 
+            background: #2c3e50; color: white; font-weight: bold; border-radius: 8px; 
+            padding: 10px 20px; transition: 0.3s; border: none;
+        }
+        .btn-informe:hover { background: #34495e; color: #f1c40f; transform: scale(1.05); }
 
         .badge-status { font-size: 0.7rem; padding: 5px 10px; border-radius: 20px; }
         .dia-nombre { font-weight: bold; font-size: 1.2rem; color: #1d6f42; }
@@ -51,12 +56,17 @@
     </div>
 
     <div class="resumen-general" id="resumenGeneral">
-        <div class="total-item">
-            <span class="total-label">Total Semana</span>
-            <span class="total-value" id="valTotalGeneral">0</span>
-        </div>
-        <div id="desgloseGeneral" class="d-flex gap-2 flex-wrap">
+        <div class="d-flex gap-2 align-items-center flex-wrap" id="statsWrapper">
+            <div class="total-item">
+                <span class="total-label">Total Semana</span>
+                <span class="total-value" id="valTotalGeneral">0</span>
             </div>
+            <div id="desgloseGeneral" class="d-flex gap-2 flex-wrap"></div>
+        </div>
+
+        <button class="btn-informe" onclick="irAInforme()">
+            <i class="bi bi-file-earmark-bar-graph"></i> VER INFORME FINAL
+        </button>
     </div>
 
     <div class="row g-4" id="gridDias"></div>
@@ -78,7 +88,6 @@
             .select('dia, consolidacion')
             .eq('semana', sem);
 
-        // --- LÓGICA RESUMEN GENERAL ---
         const totalSemana = registros ? registros.length : 0;
         document.getElementById('valTotalGeneral').innerText = totalSemana;
 
@@ -94,12 +103,11 @@
         for (const [key, val] of Object.entries(globalConsolidacion)) {
             const div = document.createElement('div');
             div.className = 'total-item';
-            div.style.borderLeftColor = "#ffc107"; // Color diferente para diferenciar del total general
+            div.style.borderLeftColor = "#ffc107";
             div.innerHTML = `<span class="total-label">${key}</span><span class="total-value">${val}</span>`;
             desgloseGralContainer.appendChild(div);
         }
 
-        // --- LÓGICA DE TARJETAS POR DÍA ---
         container.innerHTML = "";
         diasSemana.forEach(dia => {
             const dataDia = registros ? registros.filter(r => r.dia === dia) : [];
@@ -155,6 +163,12 @@
     function irAImportar(dia) {
         const sem = document.getElementById('inputSemana').value;
         window.location.href = `diario.html?dia=${dia}&semana=${sem}`;
+    }
+
+    // NUEVA FUNCIÓN PARA EL BOTÓN DE INFORME
+    function irAInforme() {
+        const sem = document.getElementById('inputSemana').value;
+        window.location.href = `informe_contenedores.html?semana=${sem}`;
     }
 
     document.getElementById('inputSemana').addEventListener('change', renderizarDashboard);
