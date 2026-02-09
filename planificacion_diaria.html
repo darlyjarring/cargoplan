@@ -2,207 +2,106 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Planificación Diaria | Cargo Plan</title>
+    <title>Cargo Plan Semanal | Control Central</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { font-size: 11px; height: 100vh; display: flex; flex-direction: column; background: #f8f9fa; }
-        .top-bar { background: #1d6f42; color: white; padding: 8px 15px; display: flex; justify-content: space-between; align-items: center; }
-        
-        .grid-container { flex: 1; overflow: auto; background: white; margin: 5px; border: 1px solid #ccc; }
-        table { border-collapse: separate; border-spacing: 0; width: 100%; table-layout: fixed; }
-        
-        th { background: #e9ecef; position: sticky; top: 0; z-index: 10; border: 0.5px solid #bbb; padding: 5px; text-align: center; }
-        td { border: 0.5px solid #ddd; padding: 3px 6px; white-space: nowrap; outline: none; text-overflow: ellipsis; overflow: hidden; cursor: cell; }
-        
-        /* Estados de Celda/Fila */
-        td:focus { border: 2px solid #0d6efd !important; background: #e8f0fe !important; }
-        .fila-seleccionada { background-color: #d1e7dd !important; outline: 2px solid #198754; }
-        .booking-completado { background-color: #cff4fc !important; border-left: 5px solid #0dcaf0 !important; }
-        
-        .btn-sm { font-size: 10px; }
-        .sticky-col { position: sticky; left: 0; background: #f8f9fa; z-index: 5; }
+        body { background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .wrapper { max-width: 1200px; margin: 30px auto; padding: 20px; }
+        .card-dia { 
+            background: white; border-radius: 12px; border: none; 
+            transition: all 0.3s ease; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .card-dia:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.1); }
+        .header-semana { background: #1d6f42; color: white; border-radius: 12px; padding: 20px; margin-bottom: 30px; }
+        .badge-status { font-size: 0.7rem; padding: 5px 10px; border-radius: 20px; }
+        .dia-nombre { font-weight: bold; font-size: 1.2rem; color: #1d6f42; }
+        .stats { font-size: 0.85rem; color: #666; }
     </style>
 </head>
 <body>
 
-<div class="top-bar">
-    <div>
-        <i class="bi bi-calendar3"></i> <b>PLANIFICACIÓN: <span id="txtDia">---</span></b> | 
-        SEMANA: <span id="txtSem">---</span>
+<div class="wrapper">
+    <div class="header-semana d-flex justify-content-between align-items-center">
+        <div>
+            <h2 class="mb-0"><i class="bi bi-calendar-range"></i> CARGO PLAN SEMANAL</h2>
+            <p class="mb-0 opacity-75">Gestión de distribución de fincas y logística</p>
+        </div>
+        <div class="text-end">
+            <label class="small d-block">SEMANA TRABAJADA:</label>
+            <input type="number" id="inputSemana" class="form-control form-control-lg fw-bold text-center" value="6" style="width: 100px; display: inline-block;">
+        </div>
     </div>
-    <div class="d-flex gap-2">
-        <button class="btn btn-light btn-sm" onclick="agregarFila()"><i class="bi bi-plus-lg"></i> Agregar Fila</button>
-        <button class="btn btn-danger btn-sm" onclick="eliminarFila()"><i class="bi bi-trash"></i> Eliminar</button>
-        <button class="btn btn-warning btn-sm fw-bold" onclick="guardarCambios()"><i class="bi bi-cloud-check"></i> GUARDAR CAMBIOS</button>
-    </div>
-</div>
 
-<div class="grid-container">
-    <table id="mainTable">
-        <thead>
-            <tr id="hRow">
-                <th style="width: 40px;">#</th>
-                </tr>
-        </thead>
-        <tbody id="bBody"></tbody>
-    </table>
+    <div class="row g-4" id="gridDias">
+        </div>
 </div>
 
 <script>
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
-    const params = new URLSearchParams(window.location.search);
-    const DIA = params.get('dia') || 'LUNES';
-    const SEMANA = params.get('semana') || '0';
+    
+    const diasSemana = ["LUNES", "MARTES", "MIERCOLES", "JUEVES", "VIERNES", "SABADO"];
+    
+    async function renderizarDashboard() {
+        const sem = document.getElementById('inputSemana').value;
+        const container = document.getElementById('gridDias');
+        container.innerHTML = "";
 
-    document.getElementById('txtDia').innerText = DIA.toUpperCase();
-    document.getElementById('txtSem').innerText = SEMANA;
-
-    // Campos solicitados (Base + Sellos)
-    const columnas = ["EMPRESA", "PRODUCTOR", "FINCA", "BUQUE", "BOOKING", "CONTENEDOR", "SELLO_NAV", "SELLO_TCI", "SELLO_VENT", "SELLO_STICKER", "SELLO_STICKER_NAV", "TERMOGRAFO", "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"];
-
-    // Dibujar Cabecera
-    const hRow = document.getElementById('hRow');
-    columnas.forEach(col => {
-        let th = document.createElement('th');
-        th.style.width = "130px";
-        th.innerText = col.replace(/_/g, " ");
-        hRow.appendChild(th);
-    });
-
-    // --- CARGAR DATOS ---
-    async function cargarPlanificacion() {
-        const { data, error } = await _supabase
+        // Consultar cuántos registros hay por día en esta semana
+        const { data: conteos } = await _supabase
             .from('distribucion_diaria')
-            .select('*')
-            .match({ semana: SEMANA, dia: DIA })
-            .order('booking', { ascending: true });
+            .select('dia')
+            .eq('semana', sem);
 
-        if (data) {
-            let buffer = "";
-            data.forEach((reg, index) => {
-                buffer += crearFilaHTML(reg, index + 1);
-            });
-            document.getElementById('bBody').innerHTML = buffer;
-            asignarColoresPorBooking();
-        }
-    }
+        diasSemana.forEach(dia => {
+            const numRegistros = conteos ? conteos.filter(r => r.dia === dia).length : 0;
+            const estaCargado = numRegistros > 0;
 
-    function crearFilaHTML(reg = {}, num) {
-        let fila = `<tr><td class="sticky-col text-center bg-light">${num}</td>`;
-        columnas.forEach(col => {
-            let val = reg[col.toLowerCase()] || "";
-            fila += `<td contenteditable="true" data-col="${col.toLowerCase()}">${val}</td>`;
-        });
-        fila += `</tr>`;
-        return fila;
-    }
-
-    function agregarFila() {
-        const tbody = document.getElementById('bBody');
-        const num = tbody.rows.length + 1;
-        const tr = document.createElement('tr');
-        tr.innerHTML = crearFilaHTML({}, num);
-        tbody.appendChild(tr);
-    }
-
-    function eliminarFila() {
-        const sel = document.querySelector('.fila-seleccionada');
-        if(sel && confirm("¿Eliminar esta fila de la planificación?")) sel.remove();
-    }
-
-    // --- EVENTOS DE TECLADO Y MOUSE ---
-    document.getElementById('bBody').addEventListener('keydown', function(e) {
-        const cell = e.target;
-        const row = cell.parentElement;
-        const rowIndex = row.rowIndex - 1;
-        const colIndex = cell.cellIndex;
-
-        if (e.key === "Enter") {
-            e.preventDefault();
-            // Lógica Doble Enter: Si ya está enfocado y presiona Enter, selecciona fila
-            if (cell.dataset.lastEnter && (Date.now() - cell.dataset.lastEnter < 500)) {
-                row.classList.toggle('fila-seleccionada');
-            } else {
-                this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
-            }
-            cell.dataset.lastEnter = Date.now();
-        }
-        
-        // Flechas
-        if(e.key === "ArrowDown") { e.preventDefault(); this.rows[rowIndex + 1]?.cells[colIndex]?.focus(); }
-        if(e.key === "ArrowUp") { e.preventDefault(); this.rows[rowIndex - 1]?.cells[colIndex]?.focus(); }
-        if(e.key === "ArrowRight" && window.getSelection().anchorOffset >= cell.innerText.length) { e.preventDefault(); cell.nextElementSibling?.focus(); }
-        if(e.key === "ArrowLeft" && window.getSelection().anchorOffset === 0) { e.preventDefault(); cell.previousElementSibling?.focus(); }
-    });
-
-    // Triple Clic para Completado
-    document.getElementById('bBody').addEventListener('click', function(e) {
-        if (e.detail === 3) {
-            const bookingVal = e.target.parentElement.querySelector('[data-col="booking"]').innerText;
-            marcarBookingCompletado(bookingVal);
-        }
-    });
-
-    function asignarColoresPorBooking() {
-        const rows = document.querySelectorAll('#bBody tr');
-        let lastBooking = "";
-        let colorIndex = 0;
-        const colores = ["#ffffff", "#f1f8e9", "#e3f2fd", "#fff3e0", "#f3e5f5"];
-
-        rows.forEach(row => {
-            const currentBooking = row.querySelector('[data-col="booking"]').innerText;
-            if (currentBooking !== lastBooking) {
-                colorIndex = (colorIndex + 1) % colores.length;
-                lastBooking = currentBooking;
-            }
-            if(currentBooking !== "") row.style.backgroundColor = colores[colorIndex];
+            const col = document.createElement('div');
+            col.className = 'col-md-4 col-sm-6';
+            col.innerHTML = `
+                <div class="card card-dia p-4 h-100" onclick="irAPlanificacion('${dia}')">
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <span class="dia-nombre">${dia}</span>
+                        <span class="badge ${estaCargado ? 'bg-success' : 'bg-secondary'} badge-status">
+                            ${estaCargado ? 'CON DATOS' : 'VACÍO'}
+                        </span>
+                    </div>
+                    <div class="stats">
+                        <p class="mb-1"><i class="bi bi-box-seam"></i> <b>${numRegistros}</b> Contenedores planificados</p>
+                        <p class="mb-0 text-muted"><i class="bi bi-clock"></i> Última actualización: Hoy</p>
+                    </div>
+                    <hr>
+                    <div class="d-flex justify-content-between">
+                        <button class="btn btn-outline-primary btn-sm" onclick="event.stopPropagation(); irAImportar('${dia}')">
+                            <i class="bi bi-file-earmark-excel"></i> Importar
+                        </button>
+                        <button class="btn btn-primary btn-sm">
+                            <i class="bi bi-pencil-square"></i> Planificar
+                        </button>
+                    </div>
+                </div>
+            `;
+            container.appendChild(col);
         });
     }
 
-    function marcarBookingCompletado(booking) {
-        if(!booking) return;
-        const rows = document.querySelectorAll('#bBody tr');
-        rows.forEach(row => {
-            if(row.querySelector('[data-col="booking"]').innerText === booking) {
-                row.classList.toggle('booking-completado');
-            }
-        });
+    function irAPlanificacion(dia) {
+        const sem = document.getElementById('inputSemana').value;
+        window.location.href = `planificacion_diaria.html?dia=${dia}&semana=${sem}`;
     }
 
-    // --- GUARDADO FINAL ---
-    async function guardarCambios() {
-        const rows = document.querySelectorAll('#bBody tr');
-        const dataFinal = [];
-        let errorValidacion = false;
-
-        rows.forEach(tr => {
-            let obj = { semana: SEMANA, dia: DIA };
-            tr.querySelectorAll('[data-col]').forEach(td => {
-                let col = td.dataset.col;
-                let val = td.innerText.trim();
-                
-                // Validación obligatoria de Sello Naviera
-                if(col === "sello_nav" && val === "") errorValidacion = true;
-                
-                obj[col] = val;
-            });
-            dataFinal.push(obj);
-        });
-
-        if(errorValidacion) {
-            alert("Error: El campo 'SELLO NAVIERA' es obligatorio en todas las filas.");
-            return;
-        }
-
-        const { error } = await _supabase.from('distribucion_diaria').delete().match({semana: SEMANA, dia: DIA});
-        await _supabase.from('distribucion_diaria').insert(dataFinal);
-        alert("Planificación guardada y actualizada.");
-        asignarColoresPorBooking();
+    function irAImportar(dia) {
+        const sem = document.getElementById('inputSemana').value;
+        window.location.href = `diario.html?dia=${dia}&semana=${sem}`;
     }
 
-    cargarPlanificacion();
+    // Escuchar cambios en la semana
+    document.getElementById('inputSemana').addEventListener('change', renderizarDashboard);
+
+    // Carga inicial
+    renderizarDashboard();
 </script>
 </body>
 </html>
