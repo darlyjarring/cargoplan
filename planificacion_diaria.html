@@ -14,11 +14,11 @@
         th { background: #e9ecef; position: sticky; top: 0; z-index: 10; border: 0.5px solid #bbb; padding: 5px; text-align: center; font-weight: bold; }
         td { border: 0.5px solid #ddd; padding: 3px 6px; white-space: nowrap; outline: none; text-overflow: ellipsis; overflow: hidden; cursor: cell; }
         
-        /* Estados */
         td:focus { border: 2px solid #0d6efd !important; background: #e8f0fe !important; }
         .fila-seleccionada { background-color: #d1e7dd !important; outline: 2px solid #198754; }
         .booking-completado { background-color: #cff4fc !important; border-left: 5px solid #0dcaf0 !important; }
         .sticky-col { position: sticky; left: 0; background: #f8f9fa; z-index: 5; border-right: 2px solid #ddd; }
+        .fila-manual { border-left: 4px solid #f1c40f !important; }
     </style>
 </head>
 <body>
@@ -43,7 +43,7 @@
         <thead>
             <tr id="hRow">
                 <th style="width: 40px;" class="sticky-col">#</th>
-                </tr>
+            </tr>
         </thead>
         <tbody id="bBody">
             <tr><td colspan="25" class="text-center py-5 text-muted">Cargando distribución...</td></tr>
@@ -60,12 +60,13 @@
     document.getElementById('txtDia').innerText = DIA.toUpperCase();
     document.getElementById('txtSem').innerText = SEMANA;
 
+    // Se añadió la columna CONSOLIDACION al final
     const columnas = [
         "EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", 
         "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", 
         "CONTENEDOR", "SELLO_NAV", "SELLO_TCI", "SELLO_VENT", 
         "SELLO_STICKER", "SELLO_STICKER_NAV", "TERMOGRAFO", 
-        "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"
+        "CHOFER", "CEDULA", "PLACA", "SUPERVISOR", "CONSOLIDACION"
     ];
 
     const hRow = document.getElementById('hRow');
@@ -102,7 +103,8 @@
     }
 
     function crearFilaHTML(reg = {}, num) {
-        let fila = `<tr><td class="sticky-col text-center bg-light fw-bold">${num}</td>`;
+        const esManual = reg.id ? "" : "fila-manual"; 
+        let fila = `<tr class="${esManual}"><td class="sticky-col text-center bg-light fw-bold">${num}</td>`;
         columnas.forEach(col => {
             let val = reg[col.toLowerCase()] || "";
             fila += `<td contenteditable="true" data-col="${col.toLowerCase()}">${val}</td>`;
@@ -163,9 +165,15 @@
 
     function agregarFila() {
         const tbody = document.getElementById('bBody');
+        const nuevoReg = {
+            supervisor: "",
+            consolidacion: "" // Nueva columna vacía para ingreso manual
+        };
         const tr = document.createElement('tr');
-        tr.innerHTML = crearFilaHTML({}, tbody.rows.length + 1);
+        tr.className = "fila-manual"; 
+        tr.innerHTML = crearFilaHTML(nuevoReg, tbody.rows.length + 1);
         tbody.appendChild(tr);
+        tr.cells[1].focus();
     }
 
     function eliminarFila() {
@@ -184,15 +192,13 @@
                 let val = td.innerText.trim();
                 obj[col] = val;
             });
-            // Guardamos la fila siempre que tenga un Booking o Contenedor, sin importar los sellos
             if(obj.booking || obj.contenedor) dataFinal.push(obj);
         });
 
-        // Borramos los registros anteriores del día y subimos los nuevos (aunque falten sellos)
         const { error: delErr } = await _supabase.from('distribucion_diaria').delete().match({semana: SEMANA, dia: DIA});
         const { error: insErr } = await _supabase.from('distribucion_diaria').insert(dataFinal);
         
-        if(!insErr) alert("¡Cambios guardados! Ahora otros usuarios pueden completar la información.");
+        if(!insErr) alert("¡Cambios guardados!");
         cargarPlanificacion();
     }
 
