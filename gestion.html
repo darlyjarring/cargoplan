@@ -68,8 +68,8 @@
                     <a href="#" class="list-group-item list-group-item-action py-2" onclick="abrirDia('MARTES')"><i class="bi bi-calendar-event me-2"></i>Martes</a>
                     <a href="#" class="list-group-item list-group-item-action py-2" onclick="abrirDia('MIERCOLES')"><i class="bi bi-calendar-event me-2"></i>Miércoles</a>
                     <a href="#" class="list-group-item list-group-item-action py-2" onclick="abrirDia('JUEVES')"><i class="bi bi-calendar-event me-2"></i>Jueves</a>
-                    <a href="#" class="list-group-item list-group-item-action py-2" onclick="abrirDia('VIERNES ')"><i class="bi bi-calendar-event me-2"></i>Viernes</a>
-                    <a href="#" class="list-group-item list-group-item-action py-2" onclick="abrirDia('SABADO ')"><i class="bi bi-calendar-event me-2"></i>Sábado</a>
+                    <a href="#" class="list-group-item list-group-item-action py-2" onclick="abrirDia('VIERNES')"><i class="bi bi-calendar-event me-2"></i>Viernes</a>
+                    <a href="#" class="list-group-item list-group-item-action py-2" onclick="abrirDia('SABADO')"><i class="bi bi-calendar-event me-2"></i>Sábado</a>
                 </div>
             </div>
 
@@ -80,6 +80,7 @@
                     <ul class="ps-3 mb-0 text-muted">
                         <li>Flechas: Navegar</li>
                         <li>Enter: Editar / Bajar</li>
+                        <li>Escribir: Edición directa</li>
                     </ul>
                 </div>
             </div>
@@ -104,7 +105,7 @@
                             <th style="width: 120px;">Terminal</th>
                             <th style="width: 140px;">Destino</th>
                             <th style="width: 160px;">Barco</th>
-                            <th style="width: 90px;">Cont.</th>
+                            <th style="width: 90px;">Cant.</th>
                             <th style="width: 60px;"><i class="bi bi-trash"></i></th>
                         </tr>
                     </thead>
@@ -116,14 +117,10 @@
 </div>
 
 <script>
-    // --- CONEXIÓN SUPABASE ---
-    const SUPABASE_URL = 'https://vqxdmmtashwloobkhbva.supabase.co';
-    const SUPABASE_KEY = 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC';
-    const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
 
     let currentSelectedCell = null;
 
-    // 1. INICIALIZACIÓN
     async function listarSemanas() {
         const { data } = await _supabase.from('reporte_daes').select('semana');
         if (data) {
@@ -134,21 +131,18 @@
         }
     }
 
-    // 2. FUNCIÓN PARA ABRIR EL DÍA (SEMANERO)
     function abrirDia(dia) {
         const sem = document.getElementById('selectSemana').value;
         if(!sem) return alert("Seleccione una semana primero");
-        // Abre el archivo diario.html pasando el día y la semana por la URL
         window.open(`diario.html?dia=${dia}&semana=${sem}`, 'diario', 'width=1300,height=800');
     }
 
-    // 3. CARGA DE DATOS CARGO PLAN
     async function cargarDatosSemana() {
         const semana = document.getElementById('selectSemana').value;
         if (!semana) return;
         document.getElementById('tituloSemana').innerText = semana;
 
-        const { data, error } = await _supabase.from('reporte_daes')
+        const { data } = await _supabase.from('reporte_daes')
             .select('*')
             .eq('semana', semana)
             .order('id', { ascending: true });
@@ -169,7 +163,7 @@
                 <td tabindex="0">${d.terminal || ''}</td>
                 <td tabindex="0">${d.destino || ''}</td>
                 <td tabindex="0">${d.barco || ''}</td>
-                <td tabindex="0">${d.contenedor || ''}</td>
+                <td tabindex="0">${d.cont || d.contenedor || ''}</td>
                 <td class="text-center">
                     <button class="btn btn-sm text-danger p-0" onclick="eliminarFila(this)">
                         <i class="bi bi-x-circle-fill"></i>
@@ -178,17 +172,17 @@
             </tr>`;
     }
 
-    // 4. INTERACCIÓN EXCEL
     function activarInteractividad() {
         const cells = document.querySelectorAll('#gridBody td[tabindex="0"]');
         cells.forEach(cell => {
             cell.addEventListener('click', function() { seleccionarCelda(this); });
-            cell.addEventListener('input', function() { this.parentElement.classList.add('fila-modificada'); });
+            
             cell.addEventListener('keydown', function(e) {
                 const idx = this.cellIndex;
                 const row = this.parentElement;
                 
-                if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key)) {
+                // Navegación
+                if (["ArrowRight", "ArrowLeft", "ArrowUp", "ArrowDown"].includes(e.key) && this.contentEditable !== "true") {
                     e.preventDefault();
                     if (e.key === "ArrowRight") seleccionarCelda(this.nextElementSibling);
                     if (e.key === "ArrowLeft") seleccionarCelda(this.previousElementSibling);
@@ -196,31 +190,55 @@
                     if (e.key === "ArrowUp") seleccionarCelda(row.previousElementSibling?.cells[idx]);
                 }
                 
-                if (e.key === "Enter") { 
+                // Enter: Editar o Bajar
+                if (e.key === "Enter") {
                     e.preventDefault();
                     if (this.contentEditable !== "true") {
-                        this.contentEditable = true;
-                        this.focus();
+                        activarEdicion(this);
                     } else {
-                        this.contentEditable = false;
-                        this.blur();
+                        finalizarEdicion(this);
                         seleccionarCelda(row.nextElementSibling?.cells[idx]);
                     }
                 }
+
+                // Escritura Directa
+                if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && this.contentEditable !== "true") {
+                    activarEdicion(this);
+                }
             });
-            cell.addEventListener('blur', function() { this.contentEditable = false; });
+
+            cell.addEventListener('blur', function() { 
+                this.contentEditable = false; 
+            });
         });
     }
 
+    function activarEdicion(cell) {
+        if (!cell || cell.cellIndex === 8) return;
+        cell.contentEditable = true;
+        cell.focus();
+        // Colocar cursor al final
+        const range = document.createRange();
+        const sel = window.getSelection();
+        range.selectNodeContents(cell);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+    }
+
+    function finalizarEdicion(cell) {
+        cell.contentEditable = false;
+        cell.parentElement.classList.add('fila-modificada');
+    }
+
     function seleccionarCelda(cell) {
-        if (!cell || cell.cellIndex === undefined) return;
+        if (!cell || cell.cellIndex === 8) return;
         if (currentSelectedCell) currentSelectedCell.classList.remove('selected');
         currentSelectedCell = cell;
         cell.classList.add('selected');
         cell.focus();
     }
 
-    // 5. GUARDAR CAMBIOS
     async function guardarCambios() {
         const btn = document.querySelector(".btn-save");
         const filasModificadas = document.querySelectorAll("#gridBody tr.fila-modificada, #gridBody tr:not([data-id])");
@@ -228,9 +246,6 @@
         if (filasModificadas.length === 0) return alert("No hay cambios pendientes.");
 
         btn.disabled = true;
-        const originalHtml = btn.innerHTML;
-        btn.innerHTML = 'Guardando...';
-
         const semana = document.getElementById('selectSemana').value;
 
         try {
@@ -245,7 +260,7 @@
                     terminal: fila.cells[4].innerText.trim(),
                     destino: fila.cells[5].innerText.trim(),
                     barco: fila.cells[6].innerText.trim(),
-                    contenedor: fila.cells[7].innerText.trim()
+                    cont: fila.cells[7].innerText.trim() // Usamos 'cont' para la cantidad
                 };
 
                 if (id) {
@@ -261,7 +276,6 @@
             alert("Error: " + err.message);
         } finally {
             btn.disabled = false;
-            btn.innerHTML = originalHtml;
         }
     }
 
