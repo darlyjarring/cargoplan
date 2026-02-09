@@ -9,132 +9,126 @@
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
     <style>
         body { font-size: 0.85rem; background: #f4f7f6; }
-        .header-excel { background: #1d6f42; color: white; padding: 10px 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-        .preview-container { margin: 20px; background: white; border-radius: 8px; overflow: hidden; border: 1px solid #ccc; height: 75vh; }
-        .table-scroll { height: 100%; overflow: auto; }
+        .header-excel { background: #1d6f42; color: white; padding: 10px 20px; }
+        .preview-container { margin: 20px; background: white; border-radius: 8px; border: 1px solid #ccc; height: 70vh; overflow: auto; }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th { background: #343a40; color: white; position: sticky; top: 0; padding: 10px; font-size: 0.75rem; border: 1px solid #454d55; text-align: center; }
-        td { border: 1px solid #eee; padding: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #333; }
-        tr:nth-child(even) { background: #f8f9fa; }
-        .status-bar { padding: 5px 20px; background: #e9ecef; border-top: 1px solid #ccc; font-size: 0.8rem; }
+        th { background: #343a40; color: white; position: sticky; top: 0; padding: 10px; border: 1px solid #454d55; }
+        td { border: 1px solid #eee; padding: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; color: white; flex-direction: column; }
     </style>
 </head>
 <body>
 
+<div id="loader" class="loading-overlay">
+    <div class="spinner-border text-light"></div>
+    <h5 class="mt-3">Grabando en Base de Datos...</h5>
+</div>
+
 <div class="header-excel d-flex justify-content-between align-items-center">
     <div>
-        <i class="bi bi-file-earmark-arrow-up"></i> 
-        <b>IMPORTACIÓN: <span id="lblDia">---</span></b> | SEMANA: <span id="lblSemana">---</span>
+        <i class="bi bi-file-earmark-excel"></i> <b>IMPORTAR: <span id="lblDia">---</span></b>
     </div>
     <div class="d-flex gap-2">
         <input type="file" id="inputExcel" class="d-none" accept=".xlsx, .xls">
-        <button class="btn btn-light btn-sm fw-bold" onclick="document.getElementById('inputExcel').click()">
-            <i class="bi bi-search"></i> SELECCIONAR EXCEL
-        </button>
-        <button class="btn btn-warning btn-sm fw-bold" id="btnGrabar" onclick="grabarDatos()" disabled>
-            <i class="bi bi-cloud-upload"></i> GRABAR SI ES CORRECTO
-        </button>
+        <button class="btn btn-light btn-sm fw-bold" onclick="document.getElementById('inputExcel').click()">SELECCIONAR EXCEL</button>
+        <button class="btn btn-warning btn-sm fw-bold" id="btnGrabar" onclick="grabarDatos()" disabled>GRABAR DATOS</button>
     </div>
 </div>
 
 <div class="preview-container">
-    <div class="table-scroll">
-        <table id="tablaPreview">
-            <thead><tr id="hRow"></tr></thead>
-            <tbody id="bBody">
-                <tr><td colspan="15" class="text-center py-5 text-muted">Seleccione un archivo para ver la vista previa...</td></tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<div class="status-bar" id="statusBar">
-    Registros detectados: 0
+    <table id="tablaPreview">
+        <thead><tr id="hRow"></tr></thead>
+        <tbody id="bBody">
+            <tr><td colspan="15" class="text-center py-5">Cargue un archivo para previsualizar...</td></tr>
+        </tbody>
+    </table>
 </div>
 
 <script>
-    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+    // VERIFICA QUE ESTA URL SEA EXACTAMENTE LA DE TU DASHBOARD DE SUPABASE
+    const PROJECT_URL = 'https://vqxdmmtashwloobkhbva.supabase.co';
+    const PROJECT_KEY = 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC';
+    const _supabase = supabase.createClient(PROJECT_URL, PROJECT_KEY);
+
     const params = new URLSearchParams(window.location.search);
     const DIA = params.get('dia') || 'LUNES';
     const SEMANA = params.get('semana') || '0';
 
     document.getElementById('lblDia').innerText = DIA.toUpperCase();
-    document.getElementById('lblSemana').innerText = SEMANA;
 
     const titulos = ["EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", "CONTENEDOR", "CHOFER", "CEDULA", "PLACA", "SUPERVISOR"];
-    document.getElementById('hRow').innerHTML = titulos.map(t => `<th style="width:130px">${t}</th>`).join('');
+    document.getElementById('hRow').innerHTML = titulos.map(t => `<th style="width:140px">${t}</th>`).join('');
 
-    let datosProcesados = []; // Aquí guardaremos los datos en memoria
+    let datosParaBD = [];
 
     document.getElementById('inputExcel').addEventListener('change', function(e) {
         const reader = new FileReader();
         reader.onload = function(evt) {
             const wb = XLSX.read(new Uint8Array(evt.target.result), {type: 'array', cellDates: true});
-            
-            // Buscar la hoja que coincida con el día
             const sheetName = wb.SheetNames.find(n => n.toUpperCase().includes(DIA.toUpperCase())) || wb.SheetNames[0];
-            const ws = wb.Sheets[sheetName];
-            const rawData = XLSX.utils.sheet_to_json(ws, {header: 1});
+            const raw = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], {header: 1});
 
-            if(rawData.length > 0) {
-                const headers = rawData[0].map(h => String(h || "").toUpperCase().trim());
+            if(raw.length > 0) {
+                const headers = raw[0].map(h => String(h || "").toUpperCase().trim());
                 const idxs = titulos.map(t => headers.findIndex(h => h.includes(t.substring(0,4))));
                 
                 let html = "";
-                datosProcesados = []; // Reiniciar
+                datosParaBD = [];
 
-                for(let i = 1; i < rawData.length; i++) {
-                    const row = rawData[i];
-                    if(!row[idxs[5]] && !row[idxs[10]]) continue; // Saltar si no hay Booking ni Contenedor
+                for(let i=1; i<raw.length; i++) {
+                    if(!raw[i][idxs[5]] && !raw[i][idxs[10]]) continue; // Booking o Contenedor obligatorio
 
                     let filaObjeto = { semana: SEMANA, dia: DIA };
                     html += "<tr>";
-                    
-                    titulos.forEach((titulo, j) => {
-                        let val = idxs[j] !== -1 ? row[idxs[j]] : "";
+                    titulos.forEach((t, j) => {
+                        let val = idxs[j] !== -1 ? raw[i][idxs[j]] : "";
                         if(val instanceof Date) val = val.toLocaleDateString();
-                        
                         html += `<td>${val || ""}</td>`;
-                        // Guardar en el objeto para la base de datos
-                        filaObjeto[titulo.toLowerCase()] = String(val || "");
+                        filaObjeto[t.toLowerCase()] = String(val || "");
                     });
-
                     html += "</tr>";
-                    datosProcesados.push(filaObjeto);
+                    datosParaBD.push(filaObjeto);
                 }
-
                 document.getElementById('bBody').innerHTML = html;
                 document.getElementById('btnGrabar').disabled = false;
-                document.getElementById('statusBar').innerText = `Registros detectados: ${datosProcesados.length} en la hoja [${sheetName}]`;
             }
         };
         reader.readAsArrayBuffer(e.target.files[0]);
     });
 
     async function grabarDatos() {
-        if(datosProcesados.length === 0) return;
-
+        document.getElementById('loader').style.display = 'flex';
         const btn = document.getElementById('btnGrabar');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> GRABANDO...';
 
         try {
-            // 1. Borrar datos existentes de ese día/semana para evitar duplicados
-            await _supabase.from('distribucion_diaria').delete().match({semana: SEMANA, dia: DIA});
-            await _supabase.from('sabana_semanal').delete().match({semana: SEMANA, dia: DIA});
+            // VERIFICACIÓN DE TABLAS - Asegúrate que existan en tu Supabase con estos nombres exactos
+            const TABLA_DIARIA = 'distribucion_diaria';
+            const TABLA_SABANA = 'sabana_semanal';
 
-            // 2. Insertar nuevos datos (Carga masiva)
-            const { error: err1 } = await _supabase.from('distribucion_diaria').insert(datosProcesados);
-            const { error: err2 } = await _supabase.from('sabana_semanal').insert(datosProcesados);
+            // 1. Limpiar datos viejos
+            const { error: errDel1 } = await _supabase.from(TABLA_DIARIA).delete().match({ semana: SEMANA, dia: DIA });
+            if (errDel1) throw new Error(`Error en Delete ${TABLA_DIARIA}: ${errDel1.message}`);
 
-            if(err1 || err2) throw (err1 || err2);
+            const { error: errDel2 } = await _supabase.from(TABLA_SABANA).delete().match({ semana: SEMANA, dia: DIA });
+            if (errDel2) throw new Error(`Error en Delete ${TABLA_SABANA}: ${errDel2.message}`);
 
-            alert("¡Datos grabados con éxito!");
-            window.close(); // Regresa al index
-        } catch (error) {
-            alert("Error al grabar: " + error.message);
+            // 2. Insertar nuevos
+            const { error: errIns1 } = await _supabase.from(TABLA_DIARIA).insert(datosParaBD);
+            if (errIns1) throw new Error(`Error en Insert ${TABLA_DIARIA}: ${errIns1.message}`);
+
+            const { error: errIns2 } = await _supabase.from(TABLA_SABANA).insert(datosParaBD);
+            if (errIns2) throw new Error(`Error en Insert ${TABLA_SABANA}: ${errIns2.message}`);
+
+            alert(`¡Éxito! Se grabaron ${datosParaBD.length} registros correctamente.`);
+            window.close();
+
+        } catch (e) {
+            console.error(e);
+            alert("FALLO CRÍTICO:\n" + e.message + "\n\nVerifique que los nombres de las tablas en Supabase sean 'distribucion_diaria' y 'sabana_semanal'.");
+        } finally {
+            document.getElementById('loader').style.display = 'none';
             btn.disabled = false;
-            btn.innerText = "REINTENTAR GRABAR";
         }
     }
 </script>
