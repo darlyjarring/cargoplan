@@ -8,8 +8,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         body { font-size: 10px; background: #f4f7f6; font-family: sans-serif; }
-        .top-bar { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; }
-        .table-container { margin: 10px; background: white; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: auto; height: calc(100vh - 110px); }
+        .top-bar { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
+        .table-container { margin: 10px; background: white; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: auto; height: calc(100vh - 70px); }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
         th { background: #34495e; color: white; position: sticky; top: 0; z-index: 10; padding: 8px; font-size: 10px; border: 1px solid #455a64; text-align: center; }
         td { padding: 4px; border: 1px solid #dee2e6; outline: none; word-wrap: break-word; vertical-align: middle; }
@@ -23,11 +23,12 @@
 
 <div class="top-bar">
     <div>
-        <button class="btn btn-sm btn-outline-light me-2" onclick="window.location.href='cargo_plan_semanal.html'"><i class="bi bi-house"></i></button>
+        <button class="btn btn-sm btn-outline-light me-2" onclick="window.history.back()"><i class="bi bi-arrow-left"></i></button>
         <b>INFORME CONSOLIDADO - SEMANA <span id="lblSemana" class="badge-week">---</span></b>
     </div>
     <div class="d-flex gap-2">
-        <button class="btn btn-warning btn-sm fw-bold" onclick="guardarInforme()"><i class="bi bi-cloud-arrow-up"></i> GUARDAR INFORME</button>
+        <button class="btn btn-primary btn-sm" onclick="cargarInforme()"><i class="bi bi-arrow-clockwise"></i> REFRESCAR</button>
+        <button class="btn btn-warning btn-sm fw-bold" onclick="guardarInforme()"><i class="bi bi-cloud-arrow-up"></i> GUARDAR CAMBIOS</button>
         <button class="btn btn-success btn-sm" onclick="exportarExcel()"><i class="bi bi-file-earmark-excel"></i> EXCEL</button>
     </div>
 </div>
@@ -39,15 +40,15 @@
                 <th style="width: 100px;">LINEA NAVIERA</th>
                 <th style="width: 90px;">MARCA</th>
                 <th style="width: 130px;">VAPOR / BUQUE</th>
-                <th style="width: 110px;">DAE</th>
+                <th style="width: 140px;">DAE</th>
                 <th style="width: 120px;">CONTENEDOR</th>
                 <th style="width: 110px;">BOOKING</th>
-                <th style="width: 100px;">FECHA CREACIÓN</th>
-                <th style="width: 100px;">ENTRADA PUERTO</th>
+                <th style="width: 90px;">F. CREACIÓN</th>
+                <th style="width: 90px;">ENTRADA PTO</th>
                 <th style="width: 100px;">PUERTO</th>
                 <th style="width: 110px;">DESTINO</th>
                 <th style="width: 70px;">CANT. CAJAS</th>
-                <th style="width: 110px;">CONSOLIDACIÓN</th>
+                <th style="width: 120px;">CONSOLIDACIÓN</th>
                 <th style="width: 150px;">OBSERVACIÓN</th>
             </tr>
         </thead>
@@ -63,46 +64,42 @@
 
     async function cargarInforme() {
         const body = document.getElementById('bodyInforme');
-        body.innerHTML = '<tr><td colspan="13" class="text-center py-5">Generando informe desde reporte_daes y planificación diaria...</td></tr>';
+        body.innerHTML = '<tr><td colspan="13" class="text-center py-5">Generando informe...</td></tr>';
 
         try {
-            // 1. Cargar la maestra de DAES (reporte_daes)
+            // 1. Cargo Plan (DAES y Cantidades)
             const { data: daes } = await _supabase.from('reporte_daes').select('*').eq('semana', SEMANA);
-            
-            // 2. Cargar los contenedores reales asignados en la planificación
+            // 2. Planificación Diaria (Contenedores reales)
             const { data: planif } = await _supabase.from('distribucion_diaria').select('*').eq('semana', SEMANA);
-
-            // 3. Cargar datos manuales guardados anteriormente en este informe
+            // 3. Memoria del Informe (Datos manuales guardados)
             const { data: informePrevio } = await _supabase.from('informe_contenedores_final').select('*').eq('semana', SEMANA);
 
             if (!daes || daes.length === 0) {
-                body.innerHTML = '<tr><td colspan="13" class="text-center py-5">No hay datos en reporte_daes para esta semana.</td></tr>';
+                body.innerHTML = '<tr><td colspan="13" class="text-center py-5">No hay datos en Cargo Plan.</td></tr>';
                 return;
             }
 
             let html = "";
             daes.forEach(d => {
-                // Cantidad de filas a crear por este booking
-                const cantFilas = parseInt(d.cont) || 1;
-                // Filtrar contenedores que pertenecen a este booking en la planificación
+                // IMPORTANTE: d.cont es la cantidad de contenedores que pusiste en gestion.html
+                const cantFilas = parseInt(d.cont) || 1; 
                 const contenedoresAsignados = planif ? planif.filter(p => p.booking === d.booking) : [];
 
                 for (let i = 0; i < cantFilas; i++) {
                     const cReal = contenedoresAsignados[i] || {};
-                    // Buscar si hay edición manual previa guardada para este booking + indice
                     const prev = (informePrevio || []).find(ip => ip.booking === d.booking && ip.indice_fila === i) || {};
 
                     html += `
                         <tr data-booking="${d.booking}" data-indice="${i}">
-                            <td contenteditable="true" data-campo="naviera">${prev.naviera || d.naviera || ''}</td>
-                            <td contenteditable="true" data-campo="marca">${prev.marca || cReal.marca || d.marca || ''}</td>
-                            <td contenteditable="true" data-campo="vapor">${prev.vapor || d.vapor || d.barco || ''}</td>
+                            <td contenteditable="true" data-campo="naviera">${prev.naviera || d.empresa || ''}</td>
+                            <td contenteditable="true" data-campo="marca">${prev.marca || cReal.marca || ''}</td>
+                            <td contenteditable="true" data-campo="vapor">${prev.vapor || d.barco || ''}</td>
                             <td contenteditable="true" data-campo="dae">${prev.dae || d.dae || ''}</td>
                             <td contenteditable="true" data-campo="contenedor" class="text-blue">${prev.contenedor || cReal.contenedor || ''}</td>
-                            <td contenteditable="true" data-campo="booking">${d.booking}</td>
+                            <td data-campo="booking">${d.booking}</td>
                             <td contenteditable="true" data-campo="fecha_creacion">${prev.fecha_creacion || ''}</td>
                             <td contenteditable="true" data-campo="fecha_puerto">${prev.fecha_puerto || ''}</td>
-                            <td contenteditable="true" data-campo="puerto">${prev.puerto || cReal.terminal || d.puerto || ''}</td>
+                            <td contenteditable="true" data-campo="puerto">${prev.puerto || d.terminal || ''}</td>
                             <td contenteditable="true" data-campo="destino">${prev.destino || d.destino || ''}</td>
                             <td contenteditable="true" data-campo="cajas">${prev.cajas || ''}</td>
                             <td contenteditable="true" data-campo="campo">${prev.campo || cReal.consolidacion || ''}</td>
@@ -114,45 +111,55 @@
             body.innerHTML = html;
         } catch (err) {
             console.error(err);
-            body.innerHTML = '<tr><td colspan="13" class="text-center text-danger">Error de conexión con las tablas.</td></tr>';
+            body.innerHTML = '<tr><td colspan="13" class="text-center py-5 text-danger">Error al cargar datos.</td></tr>';
         }
     }
 
     async function guardarInforme() {
+        const btn = document.querySelector('.btn-warning');
+        btn.disabled = true;
+        btn.innerHTML = "Guardando...";
+
         const filas = document.querySelectorAll('#bodyInforme tr');
         const registros = [];
 
         filas.forEach(tr => {
-            const item = {
+            registros.push({
                 semana: SEMANA,
                 booking: tr.dataset.booking,
                 indice_fila: parseInt(tr.dataset.indice),
-                naviera: tr.querySelector('[data-campo="naviera"]').innerText,
-                marca: tr.querySelector('[data-campo="marca"]').innerText,
-                vapor: tr.querySelector('[data-campo="vapor"]').innerText,
-                dae: tr.querySelector('[data-campo="dae"]').innerText,
-                contenedor: tr.querySelector('[data-campo="contenedor"]').innerText,
-                fecha_creacion: tr.querySelector('[data-campo="fecha_creacion"]').innerText,
-                fecha_puerto: tr.querySelector('[data-campo="fecha_puerto"]').innerText,
-                puerto: tr.querySelector('[data-campo="puerto"]').innerText,
-                destino: tr.querySelector('[data-campo="destino"]').innerText,
-                cajas: tr.querySelector('[data-campo="cajas"]').innerText,
-                campo: tr.querySelector('[data-campo="campo"]').innerText,
-                observacion: tr.querySelector('[data-campo="observacion"]').innerText
-            };
-            registros.push(item);
+                naviera: tr.querySelector('[data-campo="naviera"]').innerText.trim(),
+                marca: tr.querySelector('[data-campo="marca"]').innerText.trim(),
+                vapor: tr.querySelector('[data-campo="vapor"]').innerText.trim(),
+                dae: tr.querySelector('[data-campo="dae"]').innerText.trim(),
+                contenedor: tr.querySelector('[data-campo="contenedor"]').innerText.trim(),
+                fecha_creacion: tr.querySelector('[data-campo="fecha_creacion"]').innerText.trim(),
+                fecha_puerto: tr.querySelector('[data-campo="fecha_puerto"]').innerText.trim(),
+                puerto: tr.querySelector('[data-campo="puerto"]').innerText.trim(),
+                destino: tr.querySelector('[data-campo="destino"]').innerText.trim(),
+                cajas: tr.querySelector('[data-campo="cajas"]').innerText.trim(),
+                campo: tr.querySelector('[data-campo="campo"]').innerText.trim(),
+                observacion: tr.querySelector('[data-campo="observacion"]').innerText.trim()
+            });
         });
 
         const { error } = await _supabase.from('informe_contenedores_final').upsert(registros, { onConflict: 'semana, booking, indice_fila' });
         
-        if (!error) alert("¡Informe guardado con todos los cambios!");
-        else alert("Error al guardar: " + error.message);
+        if (!error) alert("¡Cambios guardados!");
+        else alert("Error: " + error.message);
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> GUARDAR CAMBIOS';
     }
 
     function exportarExcel() {
         const table = document.getElementById("tablaInforme");
-        const html = table.outerHTML;
-        window.open('data:application/vnd.ms-excel,' + encodeURIComponent(html));
+        const blob = new Blob(['\ufeff' + table.outerHTML], { type: 'application/vnd.ms-excel' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `Informe_Contenedores_Semana_${SEMANA}.xls`;
+        a.click();
     }
 
     cargarInforme();
