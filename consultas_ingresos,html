@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Consultas e Ingresos | Sistema Operativo</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { background: #f4f7f6; font-family: 'Segoe UI', sans-serif; font-size: 13px; }
+        .container { max-width: 900px; margin-top: 30px; }
+        .card { border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.1); border-radius: 10px; }
+        .card-header { background: #1a237e; color: white; font-weight: bold; border-radius: 10px 10px 0 0 !important; }
+        .section-title { background: #e8eaf6; padding: 5px 15px; font-weight: bold; color: #283593; border-left: 4px solid #1a237e; margin-bottom: 15px; }
+        .form-label { font-weight: 600; color: #555; margin-bottom: 2px; }
+        .form-control-plaintext { border-bottom: 1px solid #dee2e6; padding: 5px 0; font-weight: bold; color: #000; }
+        .input-sello { background-color: #fff9c4 !important; font-weight: bold; border: 1px solid #fbc02d; }
+        .btn-search { background: #1a237e; color: white; }
+        .btn-save { background: #2e7d32; color: white; padding: 10px 30px; font-weight: bold; }
+        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
+    </style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loading">
+    <div class="spinner-border text-primary"></div>
+</div>
+
+<div class="container mb-5">
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span><i class="bi bi-search"></i> CONSULTAS E INGRESOS DE CONTENEDORES</span>
+            <button class="btn btn-sm btn-outline-light" onclick="window.history.back()">Volver</button>
+        </div>
+        <div class="card-body">
+            
+            <div class="row mb-4">
+                <div class="col-md-8 mx-auto">
+                    <div class="input-group">
+                        <input type="text" id="txtBusqueda" class="form-control form-control-lg" placeholder="Ingrese Número de Contenedor (Ej: MCU8765432)">
+                        <button class="btn btn-search btn-lg" onclick="buscarContenedor()"><i class="bi bi-search"></i> BUSCAR</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="detalleContenedor" style="display: none;">
+                
+                <div class="section-title">DATOS DEL CONTENEDOR</div>
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <label class="form-label">BOOKING</label>
+                        <div id="lblBooking" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">DAE</label>
+                        <div id="lblDae" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">SEMANA</label>
+                        <div id="lblSemana" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">DESTINO</label>
+                        <div id="lblDestino" class="form-control-plaintext">---</div>
+                    </div>
+                </div>
+
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label">EMPRESA</label>
+                        <div id="lblEmpresa" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">MARCA</label>
+                        <div id="lblMarca" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">PRODUCTOR/FINCA</label>
+                        <div id="lblFinca" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">PUERTO/TERMINAL</label>
+                        <div id="lblTerminal" class="form-control-plaintext">---</div>
+                    </div>
+                </div>
+
+                <div class="section-title">DATOS DE LOGÍSTICA</div>
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <label class="form-label">CHOFER</label>
+                        <div id="lblChofer" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">CÉDULA</label>
+                        <div id="lblCedula" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">PLACA</label>
+                        <div id="lblPlaca" class="form-control-plaintext">---</div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">CONSOLIDACIÓN</label>
+                        <div id="lblConsolidacion" class="form-control-plaintext">---</div>
+                    </div>
+                </div>
+
+                <div class="section-title">REGISTRO DE SELLOS (EDITABLE)</div>
+                <div class="row g-3 mb-4">
+                    <div class="col-md-3">
+                        <label class="form-label text-primary">SELLO NAVIERA</label>
+                        <input type="text" id="txtSelloNaviera" class="form-control input-sello">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-primary">SELLO TERMO</label>
+                        <input type="text" id="txtSelloTermo" class="form-control input-sello">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-primary">SELLO EXPORTADORA</label>
+                        <input type="text" id="txtSelloExportadora" class="form-control input-sello">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label text-primary">SELLO SEGURIDAD</label>
+                        <input type="text" id="txtSelloSeguridad" class="form-control input-sello">
+                    </div>
+                </div>
+
+                <div class="text-center mt-5">
+                    <button class="btn btn-save btn-lg" onclick="guardarSellos()">
+                        <i class="bi bi-cloud-check"></i> GUARDAR INFORMACIÓN
+                    </button>
+                </div>
+
+            </div>
+
+            <div id="mensajeVacio" class="text-center py-5 text-muted">
+                <i class="bi bi-info-circle fs-1"></i><br>
+                Ingrese un número de contenedor para consultar la información.
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+
+    let currentId = null; // Para saber qué registro actualizar
+
+    async function buscarContenedor() {
+        const busqueda = document.getElementById('txtBusqueda').value.trim();
+        if (!busqueda) return;
+
+        document.getElementById('loading').style.display = 'flex';
+        
+        try {
+            const { data, error } = await _supabase
+                .from('distribucion_diaria')
+                .select('*')
+                .eq('contenedor', busqueda)
+                .single();
+
+            if (error || !data) {
+                alert("Contenedor no encontrado en la planificación.");
+                document.getElementById('detalleContenedor').style.display = 'none';
+                document.getElementById('mensajeVacio').style.display = 'block';
+            } else {
+                currentId = data.id;
+                // Llenar etiquetas de información
+                document.getElementById('lblBooking').innerText = data.booking || 'N/A';
+                document.getElementById('lblDae').innerText = data.dae || 'N/A';
+                document.getElementById('lblSemana').innerText = data.semana || 'N/A';
+                document.getElementById('lblDestino').innerText = data.destino || 'N/A';
+                document.getElementById('lblEmpresa').innerText = data.empresa || 'N/A';
+                document.getElementById('lblMarca').innerText = data.marca || 'N/A';
+                document.getElementById('lblFinca').innerText = data.productor || 'N/A';
+                document.getElementById('lblTerminal').innerText = data.terminal || 'N/A';
+                document.getElementById('lblChofer').innerText = data.chofer || 'N/A';
+                document.getElementById('lblCedula').innerText = data.cedula || 'N/A';
+                document.getElementById('lblPlaca').innerText = data.placa || 'N/A';
+                document.getElementById('lblConsolidacion').innerText = data.consolidacion || 'N/A';
+
+                // Llenar campos editables de sellos
+                document.getElementById('txtSelloNaviera').value = data.sello_naviera || '';
+                document.getElementById('txtSelloTermo').value = data.sello_termo || '';
+                document.getElementById('txtSelloExportadora').value = data.sello_exportadora || '';
+                document.getElementById('txtSelloSeguridad').value = data.sello_seguridad || '';
+
+                document.getElementById('detalleContenedor').style.display = 'block';
+                document.getElementById('mensajeVacio').style.display = 'none';
+            }
+        } catch (e) {
+            console.error(e);
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    async function guardarSellos() {
+        if (!currentId) return;
+
+        const btn = document.querySelector('.btn-save');
+        btn.disabled = true;
+        btn.innerHTML = "Guardando...";
+
+        const updates = {
+            sello_naviera: document.getElementById('txtSelloNaviera').value.trim(),
+            sello_termo: document.getElementById('txtSelloTermo').value.trim(),
+            sello_exportadora: document.getElementById('txtSelloExportadora').value.trim(),
+            sello_seguridad: document.getElementById('txtSelloSeguridad').value.trim()
+        };
+
+        const { error } = await _supabase
+            .from('distribucion_diaria')
+            .update(updates)
+            .eq('id', currentId);
+
+        if (!error) {
+            alert("¡Sellos actualizados correctamente!");
+        } else {
+            alert("Error al actualizar: " + error.message);
+        }
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-check"></i> GUARDAR INFORMACIÓN';
+    }
+
+    // Permitir buscar al presionar Enter
+    document.getElementById('txtBusqueda').addEventListener('keypress', function (e) {
+        if (e.key === 'Enter') buscarContenedor();
+    });
+</script>
+
+</body>
+</html>
