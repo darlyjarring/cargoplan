@@ -82,7 +82,7 @@
             let html = "";
             daes.forEach(d => {
                 // IMPORTANTE: d.cont es la cantidad de contenedores que pusiste en gestion.html
-                const cantFilas = parseInt(d.cont) || 1; 
+                const cantFilas = parseInt(d.contenedor) || 1; 
                 const contenedoresAsignados = planif ? planif.filter(p => p.booking === d.booking) : [];
 
                 for (let i = 0; i < cantFilas; i++) {
