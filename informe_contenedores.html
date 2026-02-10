@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Informe de Contenedores | Edición Total</title>
+    <title>Informe Consolidado | Cargo Plan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -11,13 +11,13 @@
         .top-bar { background: #2c3e50; color: white; padding: 10px 20px; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 1000; }
         .table-container { margin: 10px; background: white; border-radius: 4px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); overflow: auto; height: calc(100vh - 70px); }
         table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-        th { background: #34495e; color: white; position: sticky; top: 0; z-index: 10; padding: 8px; font-size: 10px; border: 1px solid #455a64; text-align: center; }
+        th { background: #34495e; color: white; position: sticky; top: 0; z-index: 10; padding: 8px; font-size: 9px; border: 1px solid #455a64; text-align: center; }
         td { padding: 4px; border: 1px solid #dee2e6; outline: none; word-wrap: break-word; vertical-align: middle; }
         tr:nth-child(even) { background-color: #fcfcfc; }
         td:focus { background: #fffde7 !important; border: 2px solid #f1c40f !important; }
         .badge-week { background: #e67e22; padding: 4px 8px; border-radius: 4px; }
         .text-blue { color: #0d6efd; font-weight: bold; }
-        .bg-readonly { background-color: #f8f9fa; color: #6c757d; }
+        .bg-readonly { background-color: #f1f3f5; color: #495057; }
     </style>
 </head>
 <body>
@@ -40,18 +40,19 @@
             <tr>
                 <th style="width: 100px;">EMPRESA</th>
                 <th style="width: 100px;">LINEA NAVIERA</th>
-                <th style="width: 90px;">MARCA</th>
-                <th style="width: 130px;">VAPOR / BUQUE</th>
-                <th style="width: 140px;">DAE</th>
+                <th style="width: 80px;">MARCA</th>
+                <th style="width: 120px;">VAPOR / BUQUE</th>
+                <th style="width: 130px;">DAE</th>
+                <th style="width: 100px;">AISV</th>
                 <th style="width: 120px;">CONTENEDOR</th>
                 <th style="width: 110px;">BOOKING</th>
-                <th style="width: 90px;">F. CREACIÓN</th>
-                <th style="width: 90px;">ENTRADA PTO</th>
-                <th style="width: 100px;">PUERTO</th>
-                <th style="width: 110px;">DESTINO</th>
-                <th style="width: 70px;">CANT. CAJAS</th>
+                <th style="width: 85px;">F. CREACIÓN</th>
+                <th style="width: 85px;">ENTRADA PTO</th>
+                <th style="width: 90px;">PUERTO</th>
+                <th style="width: 100px;">DESTINO</th>
+                <th style="width: 60px;">CAJAS</th>
                 <th style="width: 120px;">CONSOLIDACIÓN</th>
-                <th style="width: 150px;">OBSERVACIÓN</th>
+                <th style="width: 140px;">OBSERVACIÓN</th>
             </tr>
         </thead>
         <tbody id="bodyInforme"></tbody>
@@ -66,17 +67,12 @@
 
     async function cargarInforme() {
         const body = document.getElementById('bodyInforme');
-        body.innerHTML = '<tr><td colspan="14" class="text-center py-5">Generando informe...</td></tr>';
+        body.innerHTML = '<tr><td colspan="15" class="text-center py-5">Generando informe...</td></tr>';
 
         try {
             const { data: daes } = await _supabase.from('reporte_daes').select('*').eq('semana', SEMANA);
             const { data: planif } = await _supabase.from('distribucion_diaria').select('*').eq('semana', SEMANA);
             const { data: informePrevio } = await _supabase.from('informe_contenedores_final').select('*').eq('semana', SEMANA);
-
-            if (!daes || daes.length === 0) {
-                body.innerHTML = '<tr><td colspan="14" class="text-center py-5">No hay datos en Cargo Plan.</td></tr>';
-                return;
-            }
 
             let html = "";
             daes.forEach(d => {
@@ -94,6 +90,7 @@
                             <td contenteditable="true" data-campo="marca">${prev.marca || cReal.marca || ''}</td>
                             <td contenteditable="true" data-campo="vapor">${prev.vapor || d.barco || ''}</td>
                             <td contenteditable="true" data-campo="dae">${prev.dae || d.dae || ''}</td>
+                            <td contenteditable="true" data-campo="aisv">${prev.aisv || ''}</td>
                             <td contenteditable="true" data-campo="contenedor" class="text-blue">${prev.contenedor || cReal.contenedor || ''}</td>
                             <td data-campo="booking">${d.booking}</td>
                             <td contenteditable="true" data-campo="fecha_creacion">${prev.fecha_creacion || ''}</td>
@@ -107,14 +104,14 @@
                     `;
                 }
             });
-            body.innerHTML = html;
+            body.innerHTML = html || '<tr><td colspan="15" class="text-center">No hay datos.</td></tr>';
         } catch (err) {
             console.error(err);
-            body.innerHTML = '<tr><td colspan="14" class="text-center py-5 text-danger">Error al cargar datos.</td></tr>';
+            body.innerHTML = '<tr><td colspan="15" class="text-center py-5 text-danger">Error al cargar datos.</td></tr>';
         }
     }
 
-    // --- SISTEMA DE NAVEGACIÓN CON FLECHAS ---
+    // NAVEGACIÓN CON FLECHAS
     document.getElementById('bodyInforme').addEventListener('keydown', function(e) {
         const cell = e.target;
         const row = cell.parentElement;
@@ -122,13 +119,12 @@
         const colIndex = cell.cellIndex;
 
         if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-            // Solo prevenir comportamiento por defecto si no se está editando texto internamente de forma profunda
-            if(e.key === "ArrowDown") { e.preventDefault(); this.rows[rowIndex + 1]?.cells[colIndex]?.focus(); }
-            if(e.key === "ArrowUp")   { e.preventDefault(); this.rows[rowIndex - 1]?.cells[colIndex]?.focus(); }
-            if(e.key === "ArrowRight") { if(cell.nextElementSibling) { e.preventDefault(); cell.nextElementSibling.focus(); } }
-            if(e.key === "ArrowLeft") { if(cell.previousElementSibling) { e.preventDefault(); cell.previousElementSibling.focus(); } }
+            e.preventDefault();
+            if(e.key === "ArrowDown") this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
+            if(e.key === "ArrowUp")   this.rows[rowIndex - 1]?.cells[colIndex]?.focus();
+            if(e.key === "ArrowRight") cell.nextElementSibling?.focus();
+            if(e.key === "ArrowLeft")  cell.previousElementSibling?.focus();
         }
-
         if (e.key === "Enter") {
             e.preventDefault();
             this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
@@ -148,10 +144,12 @@
                 semana: SEMANA,
                 booking: tr.dataset.booking,
                 indice_fila: parseInt(tr.dataset.indice),
+                empresa: tr.querySelector('[data-campo="empresa"]').innerText.trim(),
                 naviera: tr.querySelector('[data-campo="naviera"]').innerText.trim(),
                 marca: tr.querySelector('[data-campo="marca"]').innerText.trim(),
                 vapor: tr.querySelector('[data-campo="vapor"]').innerText.trim(),
                 dae: tr.querySelector('[data-campo="dae"]').innerText.trim(),
+                aisv: tr.querySelector('[data-campo="aisv"]').innerText.trim(),
                 contenedor: tr.querySelector('[data-campo="contenedor"]').innerText.trim(),
                 fecha_creacion: tr.querySelector('[data-campo="fecha_creacion"]').innerText.trim(),
                 fecha_puerto: tr.querySelector('[data-campo="fecha_puerto"]').innerText.trim(),
@@ -165,7 +163,7 @@
 
         const { error } = await _supabase.from('informe_contenedores_final').upsert(registros, { onConflict: 'semana, booking, indice_fila' });
         
-        if (!error) alert("¡Cambios guardados!");
+        if (!error) alert("¡Informe guardado!");
         else alert("Error: " + error.message);
         
         btn.disabled = false;
@@ -178,7 +176,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Informe_Final_Semana_${SEMANA}.xls`;
+        a.download = `Informe_Semana_${SEMANA}.xls`;
         a.click();
     }
 
