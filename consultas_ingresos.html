@@ -2,125 +2,220 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Consultas e Ingresos | Edición Total</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consultas e Ingresos | Operaciones Pro</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
-        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; font-size: 12px; }
-        .card { border: none; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
-        .card-header { background: #002855; color: white; font-weight: bold; text-align: center; }
-        .section-title { background: #e8eaf6; padding: 4px 12px; font-weight: bold; color: #1a237e; border-left: 4px solid #002855; margin-top: 15px; text-transform: uppercase; }
-        
-        /* Estilo para los campos editables */
-        .form-control { font-weight: bold; font-size: 13px; }
-        .input-info { background-color: #ffffff !important; border: 1px solid #ced4da; color: #333; }
-        .input-sello { background-color: #fffde7 !important; border: 1px solid #fbc02d !important; color: #000; }
-        
-        .lbl-min { font-size: 11px; color: #666; font-weight: 600; margin-bottom: 2px; display: block; }
-        .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.8); display: none; justify-content: center; align-items: center; z-index: 9999; }
-        
-        /* Resaltar campos de Gestión que NO deben cambiarse (Solo lectura) */
-        .readonly-box { background: #f8f9fa; font-weight: bold; border: 1px solid #ddd; padding: 6px; border-radius: 4px; display: block; }
+        :root {
+            --primary-dark: #0d1b2a;
+            --accent-blue: #0077b6;
+            --light-bg: #f8f9fa;
+            --gold-soft: #fffde7;
+        }
+
+        body { 
+            background-color: var(--light-bg); 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            color: #333;
+        }
+
+        .main-card {
+            border: none;
+            border-radius: 15px;
+            shadow: 0 10px 30px rgba(0,0,0,0.08);
+            overflow: hidden;
+        }
+
+        .custom-header {
+            background: linear-gradient(135deg, var(--primary-dark) 0%, #1b263b 100%);
+            color: white;
+            padding: 2rem;
+            border-bottom: 4px solid var(--accent-blue);
+        }
+
+        .search-section {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            margin-top: -30px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+
+        .section-tag {
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            color: var(--accent-blue);
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            display: block;
+            border-bottom: 1px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
+
+        .data-card {
+            background: #ffffff;
+            border: 1px solid #edf2f7;
+            padding: 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .data-card:hover {
+            border-color: var(--accent-blue);
+            background: #fdfdfd;
+        }
+
+        .lbl-title {
+            font-size: 0.7rem;
+            color: #718096;
+            font-weight: 600;
+            margin-bottom: 4px;
+            display: block;
+        }
+
+        .val-text {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #2d3748;
+        }
+
+        /* Inputs Editables */
+        .form-control-custom {
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .form-control-custom:focus {
+            border-color: var(--accent-blue);
+            box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.1);
+            outline: none;
+        }
+
+        .editable-info { background-color: #ffffff; }
+        .editable-sello { background-color: var(--gold-soft) !important; border-color: #f6e05e !important; }
+
+        .btn-save {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            border-radius: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: transform 0.2s, background 0.2s;
+        }
+
+        .btn-save:hover {
+            background: #219150;
+            transform: translateY(-2px);
+            color: white;
+        }
+
+        .loading-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255,255,255,0.9);
+            display: none; justify-content: center; align-items: center; z-index: 9999;
+        }
+
+        #txtBusqueda {
+            text-transform: uppercase;
+            font-size: 1.5rem;
+            letter-spacing: 2px;
+        }
     </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loading"><div class="spinner-border text-primary"></div></div>
+<div class="loading-overlay" id="loading">
+    <div class="text-center">
+        <div class="spinner-grow text-primary" role="status"></div>
+        <p class="mt-2 fw-bold text-primary">Sincronizando datos...</p>
+    </div>
+</div>
 
-<div class="container py-3">
-    <div class="card">
-        <div class="card-header py-3">FORMULARIO DE CONSULTA E INGRESO OPERATIVO</div>
-        <div class="card-body">
+<div class="container-fluid p-0">
+    <div class="custom-header text-center">
+        <h2 class="fw-bold mb-1">MÓDULO DE CONTROL OPERATIVO</h2>
+        <p class="opacity-75 mb-0">Gestión de Contenedores, Sellos y Logística</p>
+    </div>
+</div>
+
+<div class="container mb-5">
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
             
-            <div class="row mb-3">
-                <div class="col-md-6 mx-auto">
-                    <div class="input-group">
-                        <input type="text" id="txtBusqueda" class="form-control form-control-lg text-center fw-bold border-primary" placeholder="MSCU1234567">
-                        <button class="btn btn-primary px-4" onclick="buscar()"><i class="bi bi-search"></i> BUSCAR</button>
+            <div class="search-section text-center">
+                <div class="row justify-content-center">
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold text-muted small">ESCANEÉ O ESCRIBA EL NÚMERO DE CONTENEDOR</label>
+                        <div class="input-group mb-2">
+                            <span class="input-group-text bg-white border-primary"><i class="bi bi-search text-primary"></i></span>
+                            <input type="text" id="txtBusqueda" class="form-control form-control-lg border-primary" 
+                                   placeholder="MSCU1234567" oninput="this.value = this.value.toUpperCase()">
+                            <button class="btn btn-primary btn-lg px-4 fw-bold" onclick="buscar()">CONSULTAR</button>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div id="panelPrincipal" style="display:none;">
+            <div id="panelPrincipal" style="display:none;" class="mt-4">
                 
-                <div class="section-title">Datos de Gestión (Informativo)</div>
-                <div class="row g-2 mt-1">
-                    <div class="col-md-4"><label class="lbl-min">CLIENTE/CONSIGNATARIO</label><span id="outCliente" class="readonly-box"></span></div>
-                    <div class="col-md-3"><label class="lbl-min">DAE</label><span id="outDae" class="readonly-box text-danger"></span></div>
-                    <div class="col-md-3"><label class="lbl-min">DESTINO</label><span id="outDestino" class="readonly-box"></span></div>
-                    <div class="col-md-2"><label class="lbl-min">SEMANA</label><span id="outSemana" class="readonly-box text-center"></span></div>
-                </div>
-
-                <div class="section-title">Datos de Finca y Productor (Editable)</div>
-                <div class="row g-2 mt-1">
-                    <div class="col-md-4">
-                        <label class="lbl-min">PROVEEDOR</label>
-                        <input type="text" id="inProveedor" class="form-control input-info">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="lbl-min">FINCA / PRODUCTOR</label>
-                        <input type="text" id="inProductor" class="form-control input-info">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="lbl-min">CÓDIGO</label>
-                        <input type="text" id="inCodigo" class="form-control input-info">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="lbl-min">MARCA</label>
-                        <input type="text" id="inMarca" class="form-control input-info">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="lbl-min">DEPÓSITO</label>
-                        <input type="text" id="inDeposito" class="form-control input-info">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="lbl-min">TERMINAL / PUERTO</label>
-                        <input type="text" id="inTerminal" class="form-control input-info">
-                    </div>
-                    <div class="col-md-4">
-                        <label class="lbl-min">VAPOR / BUQUE</label>
-                        <input type="text" id="inVapor" class="form-control input-info">
-                    </div>
-                </div>
-
-                <div class="section-title">Datos de Logística (Editable)</div>
-                <div class="row g-2 mt-1">
-                    <div class="col-md-4">
-                        <label class="lbl-min">CHOFER</label>
-                        <input type="text" id="inChofer" class="form-control input-info">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="lbl-min">CÉDULA</label>
-                        <input type="text" id="inCedula" class="form-control input-info">
-                    </div>
-                    <div class="col-md-2">
-                        <label class="lbl-min">PLACA</label>
-                        <input type="text" id="inPlaca" class="form-control input-info">
-                    </div>
-                    <div class="col-md-3">
-                        <label class="lbl-min">CONSOLIDACIÓN</label>
-                        <input type="text" id="inConsolidacion" class="form-control input-info">
-                    </div>
-                </div>
-
-                <div class="section-title">Registro de Sellos y Seguridad</div>
-                <div class="row g-2 mt-2">
-                    <div class="col-md-3"><label class="lbl-min fw-bold">SELLO NAVIERA</label><input type="text" id="inNaviera" class="form-control input-sello"></div>
-                    <div class="col-md-3"><label class="lbl-min fw-bold">SELLO TERMO</label><input type="text" id="inTermo" class="form-control input-sello"></div>
-                    <div class="col-md-3"><label class="lbl-min fw-bold">SELLO EXPORTADORA</label><input type="text" id="inExportadora" class="form-control input-sello"></div>
-                    <div class="col-md-3"><label class="lbl-min fw-bold">SELLO SEGURIDAD</label><input type="text" id="inSeguridad" class="form-control input-sello"></div>
+                <div class="card main-card shadow-sm p-4">
                     
-                    <div class="col-md-3"><label class="lbl-min fw-bold">ADHESIVO SEGURIDAD</label><input type="text" id="inAdhesivo" class="form-control input-sello"></div>
-                    <div class="col-md-3"><label class="lbl-min fw-bold">N° TERMÓGRAFO</label><input type="text" id="inTermografo" class="form-control input-sello"></div>
-                    <div class="col-md-3"><label class="lbl-min fw-bold">VERIFICADOR</label><input type="text" id="inVerificador" class="form-control input-sello"></div>
-                    <div class="col-md-3"><label class="lbl-min fw-bold">FECHA INGRESO</label><input type="date" id="inFecha" class="form-control input-sello"></div>
-                </div>
+                    <span class="section-tag">Información de Gestión (Solo Lectura)</span>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4"><div class="data-card"><span class="lbl-title">CLIENTE / CONSIGNATARIO</span><span id="outCliente" class="val-text">---</span></div></div>
+                        <div class="col-md-3"><div class="data-card"><span class="lbl-title">DAE</span><span id="outDae" class="val-text text-danger">---</span></div></div>
+                        <div class="col-md-3"><div class="data-card"><span class="lbl-title">DESTINO</span><span id="outDestino" class="val-text">---</span></div></div>
+                        <div class="col-md-2"><div class="data-card"><span class="lbl-title text-center">SEMANA</span><span id="outSemana" class="val-text d-block text-center">---</span></div></div>
+                    </div>
 
-                <div class="text-center mt-5">
-                    <button class="btn btn-success btn-lg px-5 shadow fw-bold" onclick="guardarTodo()">
-                        <i class="bi bi-cloud-check"></i> ACTUALIZAR Y GUARDAR TODO
-                    </button>
+                    <span class="section-tag">Datos de Finca y Productor (Editable)</span>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4"><label class="lbl-title">PROVEEDOR</label><input type="text" id="inProveedor" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-4"><label class="lbl-title">FINCA / PRODUCTOR</label><input type="text" id="inProductor" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-2"><label class="lbl-title">CÓDIGO</label><input type="text" id="inCodigo" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-2"><label class="lbl-title">MARCA</label><input type="text" id="inMarca" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-4"><label class="lbl-title">DEPÓSITO</label><input type="text" id="inDeposito" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-4"><label class="lbl-title">TERMINAL / PUERTO</label><input type="text" id="inTerminal" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-4"><label class="lbl-title">VAPOR / BUQUE</label><input type="text" id="inVapor" class="form-control form-control-custom editable-info"></div>
+                    </div>
+
+                    <span class="section-tag">Datos del Transporte (Editable)</span>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-4"><label class="lbl-title">CHOFER</label><input type="text" id="inChofer" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-3"><label class="lbl-title">CÉDULA</label><input type="text" id="inCedula" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-2"><label class="lbl-title">PLACA</label><input type="text" id="inPlaca" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-3"><label class="lbl-title">CONSOLIDACIÓN</label><input type="text" id="inConsolidacion" class="form-control form-control-custom editable-info"></div>
+                    </div>
+
+                    <span class="section-tag text-primary">Registro de Sellos y Seguridad</span>
+                    <div class="row g-3 mb-5">
+                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO NAVIERA</label><input type="text" id="inNaviera" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO TERMO</label><input type="text" id="inTermo" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO EXPORTADORA</label><input type="text" id="inExportadora" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO SEGURIDAD</label><input type="text" id="inSeguridad" class="form-control form-control-custom editable-sello"></div>
+                        
+                        <div class="col-md-3"><label class="lbl-title fw-bold">ADHESIVO SEGURIDAD</label><input type="text" id="inAdhesivo" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="lbl-title fw-bold">N° TERMÓGRAFO</label><input type="text" id="inTermografo" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="lbl-title fw-bold">VERIFICADOR</label><input type="text" id="inVerificador" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="lbl-title fw-bold">FECHA INGRESO</label><input type="date" id="inFecha" class="form-control form-control-custom editable-sello"></div>
+                    </div>
+
+                    <div class="text-center">
+                        <button class="btn btn-save" onclick="guardarTodo()">
+                            <i class="bi bi-check-all fs-4 me-2"></i> ACTUALIZAR Y GUARDAR INFORMACIÓN
+                        </button>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -140,20 +235,20 @@
             const { data: plan } = await _supabase.from('distribucion_diaria').select('*').eq('contenedor', cont).maybeSingle();
             
             if(!plan) {
-                alert("Contenedor no encontrado.");
+                alert("⚠️ Contenedor no encontrado en el sistema.");
+                document.getElementById('loading').style.display = 'none';
                 return;
             }
             currentId = plan.id;
 
             const { data: cargo } = await _supabase.from('reporte_daes').select('*').eq('booking', plan.booking).maybeSingle();
 
-            // Datos Fijos (Gestión)
+            // Llenar Campos
             document.getElementById('outCliente').innerText = (cargo ? cargo.empresa : '---');
             document.getElementById('outDae').innerText = (cargo ? cargo.dae : '---');
             document.getElementById('outDestino').innerText = (cargo ? cargo.destino : '---');
             document.getElementById('outSemana').innerText = plan.semana || '---';
 
-            // Datos Editables - Finca / Productor
             document.getElementById('inProveedor').value = plan.proveedor || '';
             document.getElementById('inProductor').value = plan.productor || '';
             document.getElementById('inCodigo').value = plan.codigo || '';
@@ -162,13 +257,11 @@
             document.getElementById('inTerminal').value = plan.terminal || '';
             document.getElementById('inVapor').value = plan.vapor || (cargo ? cargo.barco : '');
 
-            // Datos Editables - Logística
             document.getElementById('inChofer').value = plan.chofer || '';
             document.getElementById('inCedula').value = plan.cedula || '';
             document.getElementById('inPlaca').value = plan.placa || '';
             document.getElementById('inConsolidacion').value = plan.consolidacion || '';
 
-            // Datos Editables - Sellos
             document.getElementById('inNaviera').value = plan.sello_naviera || '';
             document.getElementById('inTermo').value = plan.sello_termo || '';
             document.getElementById('inExportadora').value = plan.sello_exportadora || '';
@@ -185,9 +278,9 @@
 
     async function guardarTodo() {
         if(!currentId) return;
+        document.getElementById('loading').style.display = 'flex';
 
         const updates = {
-            // Finca/Productor
             proveedor: document.getElementById('inProveedor').value,
             productor: document.getElementById('inProductor').value,
             codigo: document.getElementById('inCodigo').value,
@@ -195,12 +288,10 @@
             deposito: document.getElementById('inDeposito').value,
             terminal: document.getElementById('inTerminal').value,
             vapor: document.getElementById('inVapor').value,
-            // Logística
             chofer: document.getElementById('inChofer').value,
             cedula: document.getElementById('inCedula').value,
             placa: document.getElementById('inPlaca').value,
             consolidacion: document.getElementById('inConsolidacion').value,
-            // Sellos
             sello_naviera: document.getElementById('inNaviera').value,
             sello_termo: document.getElementById('inTermo').value,
             sello_exportadora: document.getElementById('inExportadora').value,
@@ -214,15 +305,15 @@
         const { error } = await _supabase.from('distribucion_diaria').update(updates).eq('id', currentId);
         
         if(!error) {
-            alert("✅ ¡Todo actualizado correctamente!");
-            document.getElementById('txtBusqueda').value = "";
-            document.getElementById('panelPrincipal').style.display = 'none';
-            document.getElementById('txtBusqueda').focus();
+            alert("✅ Información actualizada con éxito.");
+            location.reload(); 
         } else {
             alert("❌ Error: " + error.message);
+            document.getElementById('loading').style.display = 'none';
         }
     }
 
+    // Buscar al presionar Enter
     document.getElementById('txtBusqueda').addEventListener('keypress', (e) => { if(e.key==='Enter') buscar(); });
 </script>
 </body>
