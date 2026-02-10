@@ -3,216 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consultas e Ingresos | Operaciones Pro</title>
+    <title>Consultas e Ingresos | Gestión Operativa</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --primary-dark: #0d1b2a;
-            --accent-blue: #0077b6;
-            --light-bg: #f8f9fa;
-            --gold-soft: #fffde7;
+            --navy: #002855;
+            --blue-action: #0056b3;
+            --bg-light: #f4f7f9;
+            --sello-bg: #fff9c4;
         }
 
         body { 
-            background-color: var(--light-bg); 
-            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-light); 
+            font-family: 'Segoe UI', Roboto, sans-serif;
             color: #333;
+            font-size: 13px;
         }
 
-        .main-card {
-            border: none;
-            border-radius: 15px;
-            shadow: 0 10px 30px rgba(0,0,0,0.08);
-            overflow: hidden;
-        }
-
-        .custom-header {
-            background: linear-gradient(135deg, var(--primary-dark) 0%, #1b263b 100%);
+        .header-app {
+            background: var(--navy);
             color: white;
-            padding: 2rem;
-            border-bottom: 4px solid var(--accent-blue);
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            margin-bottom: 2rem;
         }
 
-        .search-section {
+        .card-container {
             background: white;
-            padding: 25px;
             border-radius: 12px;
-            margin-top: -30px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-        }
-
-        .section-tag {
-            font-size: 0.75rem;
-            font-weight: 800;
-            text-transform: uppercase;
-            color: var(--accent-blue);
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-            display: block;
-            border-bottom: 1px solid #e0e0e0;
-            padding-bottom: 5px;
-        }
-
-        .data-card {
-            background: #ffffff;
-            border: 1px solid #edf2f7;
-            padding: 12px;
-            border-radius: 8px;
-            transition: all 0.2s;
-        }
-
-        .data-card:hover {
-            border-color: var(--accent-blue);
-            background: #fdfdfd;
-        }
-
-        .lbl-title {
-            font-size: 0.7rem;
-            color: #718096;
-            font-weight: 600;
-            margin-bottom: 4px;
-            display: block;
-        }
-
-        .val-text {
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #2d3748;
-        }
-
-        /* Inputs Editables */
-        .form-control-custom {
-            border: 1px solid #cbd5e0;
-            border-radius: 6px;
-            padding: 8px 12px;
-            font-weight: 700;
-            font-size: 0.9rem;
-            transition: all 0.2s;
-        }
-
-        .form-control-custom:focus {
-            border-color: var(--accent-blue);
-            box-shadow: 0 0 0 3px rgba(0, 119, 182, 0.1);
-            outline: none;
-        }
-
-        .editable-info { background-color: #ffffff; }
-        .editable-sello { background-color: var(--gold-soft) !important; border-color: #f6e05e !important; }
-
-        .btn-save {
-            background: #27ae60;
-            color: white;
             border: none;
-            padding: 15px 40px;
-            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 20px;
+        }
+
+        .section-header {
+            font-size: 0.8rem;
             font-weight: 800;
+            color: var(--blue-action);
             text-transform: uppercase;
             letter-spacing: 1px;
-            transition: transform 0.2s, background 0.2s;
+            border-bottom: 2px solid #e9ecef;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            display: flex;
+            align-items: center;
         }
 
-        .btn-save:hover {
-            background: #219150;
-            transform: translateY(-2px);
+        .section-header i { margin-right: 8px; }
+
+        .form-label-custom {
+            font-size: 11px;
+            font-weight: 700;
+            color: #6c757d;
+            margin-bottom: 3px;
+        }
+
+        .form-control-editable {
+            border: 1px solid #ced4da;
+            font-weight: 700;
+            color: #000;
+            transition: all 0.2s;
+        }
+
+        .form-control-editable:focus {
+            border-color: var(--blue-action);
+            box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.1);
+        }
+
+        .input-sello {
+            background-color: var(--sello-bg) !important;
+            border: 1px solid #fbc02d !important;
+        }
+
+        .readonly-data {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-weight: 800;
+            color: #212529;
+            display: block;
+        }
+
+        .btn-update {
+            background: #28a745;
             color: white;
+            padding: 12px 35px;
+            border-radius: 8px;
+            font-weight: 700;
+            border: none;
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
         }
 
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.9);
-            display: none; justify-content: center; align-items: center; z-index: 9999;
+        .btn-update:hover {
+            background: #218838;
+            transform: translateY(-1px);
         }
 
         #txtBusqueda {
             text-transform: uppercase;
-            font-size: 1.5rem;
-            letter-spacing: 2px;
+            font-weight: 800;
+            font-size: 1.2rem;
         }
     </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loading">
-    <div class="text-center">
-        <div class="spinner-grow text-primary" role="status"></div>
-        <p class="mt-2 fw-bold text-primary">Sincronizando datos...</p>
-    </div>
-</div>
-
-<div class="container-fluid p-0">
-    <div class="custom-header text-center">
-        <h2 class="fw-bold mb-1">MÓDULO DE CONTROL OPERATIVO</h2>
-        <p class="opacity-75 mb-0">Gestión de Contenedores, Sellos y Logística</p>
-    </div>
+<div class="header-app text-center">
+    <h4 class="mb-0 fw-bold"><i class="bi bi-search"></i> CONSULTA E INGRESO DE DATOS OPERATIVOS</h4>
 </div>
 
 <div class="container mb-5">
-    <div class="row">
-        <div class="col-lg-10 mx-auto">
+    <div class="row justify-content-center">
+        <div class="col-xl-11">
             
-            <div class="search-section text-center">
+            <div class="card-container mb-4 text-center">
                 <div class="row justify-content-center">
-                    <div class="col-md-8">
-                        <label class="form-label fw-bold text-muted small">ESCANEÉ O ESCRIBA EL NÚMERO DE CONTENEDOR</label>
-                        <div class="input-group mb-2">
-                            <span class="input-group-text bg-white border-primary"><i class="bi bi-search text-primary"></i></span>
-                            <input type="text" id="txtBusqueda" class="form-control form-control-lg border-primary" 
-                                   placeholder="MSCU1234567" oninput="this.value = this.value.toUpperCase()">
-                            <button class="btn btn-primary btn-lg px-4 fw-bold" onclick="buscar()">CONSULTAR</button>
+                    <div class="col-md-7">
+                        <label class="form-label-custom">NÚMERO DE CONTENEDOR (MAYÚSCULAS AUTOMÁTICAS)</label>
+                        <div class="input-group">
+                            <input type="text" id="txtBusqueda" class="form-control border-primary" 
+                                   placeholder="EJ: TGBU1234567" oninput="this.value = this.value.toUpperCase()">
+                            <button class="btn btn-primary px-4 fw-bold" onclick="buscar()"><i class="bi bi-search"></i> CONSULTAR</button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div id="panelPrincipal" style="display:none;" class="mt-4">
-                
-                <div class="card main-card shadow-sm p-4">
+            <div id="panelPrincipal" style="display:none;">
+                <div class="card-container">
                     
-                    <span class="section-tag">Información de Gestión (Solo Lectura)</span>
+                    <div class="section-header"><i class="bi bi-file-earmark-text"></i> Información de Gestión</div>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-4"><div class="data-card"><span class="lbl-title">CLIENTE / CONSIGNATARIO</span><span id="outCliente" class="val-text">---</span></div></div>
-                        <div class="col-md-3"><div class="data-card"><span class="lbl-title">DAE</span><span id="outDae" class="val-text text-danger">---</span></div></div>
-                        <div class="col-md-3"><div class="data-card"><span class="lbl-title">DESTINO</span><span id="outDestino" class="val-text">---</span></div></div>
-                        <div class="col-md-2"><div class="data-card"><span class="lbl-title text-center">SEMANA</span><span id="outSemana" class="val-text d-block text-center">---</span></div></div>
+                        <div class="col-md-4"><label class="form-label-custom">CLIENTE / CONSIGNATARIO</label><span id="outCliente" class="readonly-data"></span></div>
+                        <div class="col-md-3"><label class="form-label-custom">DAE</label><span id="outDae" class="readonly-data text-danger"></span></div>
+                        <div class="col-md-3"><label class="form-label-custom">DESTINO</label><span id="outDestino" class="readonly-data"></span></div>
+                        <div class="col-md-2"><label class="form-label-custom">SEMANA</label><span id="outSemana" class="readonly-data text-center"></span></div>
                     </div>
 
-                    <span class="section-tag">Datos de Finca y Productor (Editable)</span>
+                    <div class="section-header"><i class="bi bi-tree"></i> Datos de Origen (Finca y Productor)</div>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-4"><label class="lbl-title">PROVEEDOR</label><input type="text" id="inProveedor" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-4"><label class="lbl-title">FINCA / PRODUCTOR</label><input type="text" id="inProductor" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-2"><label class="lbl-title">CÓDIGO</label><input type="text" id="inCodigo" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-2"><label class="lbl-title">MARCA</label><input type="text" id="inMarca" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-4"><label class="lbl-title">DEPÓSITO</label><input type="text" id="inDeposito" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-4"><label class="lbl-title">TERMINAL / PUERTO</label><input type="text" id="inTerminal" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-4"><label class="lbl-title">VAPOR / BUQUE</label><input type="text" id="inVapor" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-3">
+                            <label class="form-label-custom">PROVEEDOR / EXPORTADOR</label>
+                            <input type="text" id="inProveedor" class="form-control form-control-editable">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label-custom text-primary">NOMBRE DE LA FINCA</label>
+                            <input type="text" id="inFinca" class="form-control form-control-editable" placeholder="Nombre del Predio">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label-custom">PRODUCTOR (DUEÑO)</label>
+                            <input type="text" id="inProductor" class="form-control form-control-editable">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="form-label-custom">CÓDIGO</label>
+                            <input type="text" id="inCodigo" class="form-control form-control-editable">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label-custom">MARCA</label>
+                            <input type="text" id="inMarca" class="form-control form-control-editable">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-custom">DEPÓSITO DE CONTENEDOR</label>
+                            <input type="text" id="inDeposito" class="form-control form-control-editable">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-custom">PUERTO / TERMINAL</label>
+                            <input type="text" id="inTerminal" class="form-control form-control-editable">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label-custom">VAPOR / BUQUE</label>
+                            <input type="text" id="inVapor" class="form-control form-control-editable">
+                        </div>
                     </div>
 
-                    <span class="section-tag">Datos del Transporte (Editable)</span>
+                    <div class="section-header"><i class="bi bi-truck"></i> Transporte y Logística</div>
                     <div class="row g-3 mb-4">
-                        <div class="col-md-4"><label class="lbl-title">CHOFER</label><input type="text" id="inChofer" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-3"><label class="lbl-title">CÉDULA</label><input type="text" id="inCedula" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-2"><label class="lbl-title">PLACA</label><input type="text" id="inPlaca" class="form-control form-control-custom editable-info"></div>
-                        <div class="col-md-3"><label class="lbl-title">CONSOLIDACIÓN</label><input type="text" id="inConsolidacion" class="form-control form-control-custom editable-info"></div>
+                        <div class="col-md-4"><label class="form-label-custom">CHOFER</label><input type="text" id="inChofer" class="form-control form-control-editable"></div>
+                        <div class="col-md-3"><label class="form-label-custom">CÉDULA</label><input type="text" id="inCedula" class="form-control form-control-editable"></div>
+                        <div class="col-md-2"><label class="form-label-custom">PLACA</label><input type="text" id="inPlaca" class="form-control form-control-editable"></div>
+                        <div class="col-md-3"><label class="form-label-custom">TIPO CONSOLIDACIÓN</label><input type="text" id="inConsolidacion" class="form-control form-control-editable"></div>
                     </div>
 
-                    <span class="section-tag text-primary">Registro de Sellos y Seguridad</span>
+                    <div class="section-header"><i class="bi bi-shield-check"></i> Sellos de Seguridad</div>
                     <div class="row g-3 mb-5">
-                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO NAVIERA</label><input type="text" id="inNaviera" class="form-control form-control-custom editable-sello"></div>
-                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO TERMO</label><input type="text" id="inTermo" class="form-control form-control-custom editable-sello"></div>
-                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO EXPORTADORA</label><input type="text" id="inExportadora" class="form-control form-control-custom editable-sello"></div>
-                        <div class="col-md-3"><label class="lbl-title fw-bold">SELLO SEGURIDAD</label><input type="text" id="inSeguridad" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">SELLO NAVIERA</label><input type="text" id="inNaviera" class="form-control form-control-editable input-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">SELLO TERMO</label><input type="text" id="inTermo" class="form-control form-control-editable input-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">SELLO EXPORTADORA</label><input type="text" id="inExportadora" class="form-control form-control-editable input-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">SELLO SEGURIDAD</label><input type="text" id="inSeguridad" class="form-control form-control-editable input-sello"></div>
                         
-                        <div class="col-md-3"><label class="lbl-title fw-bold">ADHESIVO SEGURIDAD</label><input type="text" id="inAdhesivo" class="form-control form-control-custom editable-sello"></div>
-                        <div class="col-md-3"><label class="lbl-title fw-bold">N° TERMÓGRAFO</label><input type="text" id="inTermografo" class="form-control form-control-custom editable-sello"></div>
-                        <div class="col-md-3"><label class="lbl-title fw-bold">VERIFICADOR</label><input type="text" id="inVerificador" class="form-control form-control-custom editable-sello"></div>
-                        <div class="col-md-3"><label class="lbl-title fw-bold">FECHA INGRESO</label><input type="date" id="inFecha" class="form-control form-control-custom editable-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">ADHESIVO SEGURIDAD</label><input type="text" id="inAdhesivo" class="form-control form-control-editable input-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">ID TERMÓGRAFO</label><input type="text" id="inTermografo" class="form-control form-control-editable input-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">VERIFICADOR / PATIO</label><input type="text" id="inVerificador" class="form-control form-control-editable input-sello"></div>
+                        <div class="col-md-3"><label class="form-label-custom">FECHA INGRESO</label><input type="date" id="inFecha" class="form-control form-control-editable input-sello"></div>
                     </div>
 
-                    <div class="text-center">
-                        <button class="btn btn-save" onclick="guardarTodo()">
-                            <i class="bi bi-check-all fs-4 me-2"></i> ACTUALIZAR Y GUARDAR INFORMACIÓN
+                    <div class="text-center py-3">
+                        <button class="btn btn-update" onclick="guardarTodo()">
+                            <i class="bi bi-save2"></i> GUARDAR Y ACTUALIZAR REGISTRO COMPLETO
                         </button>
                     </div>
 
@@ -227,29 +217,29 @@
     let currentId = null;
 
     async function buscar() {
-        const cont = document.getElementById('txtBusqueda').value.trim().toUpperCase();
-        if(!cont) return;
-        document.getElementById('loading').style.display = 'flex';
+        const busq = document.getElementById('txtBusqueda').value.trim().toUpperCase();
+        if(!busq) return;
 
         try {
-            const { data: plan } = await _supabase.from('distribucion_diaria').select('*').eq('contenedor', cont).maybeSingle();
+            const { data: plan } = await _supabase.from('distribucion_diaria').select('*').eq('contenedor', busq).maybeSingle();
             
             if(!plan) {
-                alert("⚠️ Contenedor no encontrado en el sistema.");
-                document.getElementById('loading').style.display = 'none';
+                alert("El contenedor no está registrado en la planificación.");
                 return;
             }
             currentId = plan.id;
 
             const { data: cargo } = await _supabase.from('reporte_daes').select('*').eq('booking', plan.booking).maybeSingle();
 
-            // Llenar Campos
+            // Llenar Gestión
             document.getElementById('outCliente').innerText = (cargo ? cargo.empresa : '---');
             document.getElementById('outDae').innerText = (cargo ? cargo.dae : '---');
             document.getElementById('outDestino').innerText = (cargo ? cargo.destino : '---');
             document.getElementById('outSemana').innerText = plan.semana || '---';
 
+            // Llenar Finca / Productor
             document.getElementById('inProveedor').value = plan.proveedor || '';
+            document.getElementById('inFinca').value = plan.finca || ''; // NUEVO CAMPO
             document.getElementById('inProductor').value = plan.productor || '';
             document.getElementById('inCodigo').value = plan.codigo || '';
             document.getElementById('inMarca').value = plan.marca || '';
@@ -257,11 +247,13 @@
             document.getElementById('inTerminal').value = plan.terminal || '';
             document.getElementById('inVapor').value = plan.vapor || (cargo ? cargo.barco : '');
 
+            // Llenar Logística
             document.getElementById('inChofer').value = plan.chofer || '';
             document.getElementById('inCedula').value = plan.cedula || '';
             document.getElementById('inPlaca').value = plan.placa || '';
             document.getElementById('inConsolidacion').value = plan.consolidacion || '';
 
+            // Llenar Seguridad
             document.getElementById('inNaviera').value = plan.sello_naviera || '';
             document.getElementById('inTermo').value = plan.sello_termo || '';
             document.getElementById('inExportadora').value = plan.sello_exportadora || '';
@@ -272,16 +264,15 @@
             document.getElementById('inFecha').value = plan.fecha_ingreso || new Date().toISOString().split('T')[0];
 
             document.getElementById('panelPrincipal').style.display = 'block';
-        } catch (e) { console.error(e); }
-        finally { document.getElementById('loading').style.display = 'none'; }
+        } catch (e) { alert("Error en consulta"); }
     }
 
     async function guardarTodo() {
         if(!currentId) return;
-        document.getElementById('loading').style.display = 'flex';
 
-        const updates = {
+        const dataUpdate = {
             proveedor: document.getElementById('inProveedor').value,
+            finca: document.getElementById('inFinca').value, // NUEVO CAMPO
             productor: document.getElementById('inProductor').value,
             codigo: document.getElementById('inCodigo').value,
             marca: document.getElementById('inMarca').value,
@@ -302,19 +293,15 @@
             fecha_ingreso: document.getElementById('inFecha').value
         };
 
-        const { error } = await _supabase.from('distribucion_diaria').update(updates).eq('id', currentId);
+        const { error } = await _supabase.from('distribucion_diaria').update(dataUpdate).eq('id', currentId);
         
         if(!error) {
-            alert("✅ Información actualizada con éxito.");
-            location.reload(); 
+            alert("✅ Registro actualizado exitosamente.");
+            location.reload();
         } else {
-            alert("❌ Error: " + error.message);
-            document.getElementById('loading').style.display = 'none';
+            alert("❌ Error al guardar: " + error.message);
         }
     }
-
-    // Buscar al presionar Enter
-    document.getElementById('txtBusqueda').addEventListener('keypress', (e) => { if(e.key==='Enter') buscar(); });
 </script>
 </body>
 </html>
