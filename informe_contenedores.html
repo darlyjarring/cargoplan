@@ -111,6 +111,7 @@
         }
     }
 
+    // NAVEGACIÓN CON FLECHAS
     document.getElementById('bodyInforme').addEventListener('keydown', function(e) {
         const cell = e.target;
         const row = cell.parentElement;
@@ -137,15 +138,17 @@
 
         const filas = document.querySelectorAll('#bodyInforme tr');
         const registrosInforme = [];
-        const promesasSincronizacion = [];
 
-        filas.forEach(tr => {
+        for (const tr of filas) {
             const booking = tr.dataset.booking;
             const contenedor = tr.querySelector('[data-campo="contenedor"]').innerText.trim();
             const vapor = tr.querySelector('[data-campo="vapor"]').innerText.trim();
             const marca = tr.querySelector('[data-campo="marca"]').innerText.trim();
-            const cajas = tr.querySelector('[data-campo="cajas"]').innerText.trim();
             const puerto = tr.querySelector('[data-campo="puerto"]').innerText.trim();
+            
+            // Limpieza y validación del número de cajas
+            let cajasRaw = tr.querySelector('[data-campo="cajas"]').innerText.trim();
+            let cajasNum = (cajasRaw === "" || isNaN(cajasRaw)) ? null : parseInt(cajasRaw);
 
             const dataFila = {
                 semana: SEMANA,
@@ -162,42 +165,37 @@
                 fecha_puerto: tr.querySelector('[data-campo="fecha_puerto"]').innerText.trim(),
                 puerto: puerto,
                 destino: tr.querySelector('[data-campo="destino"]').innerText.trim(),
-                cajas: cajas,
+                cajas: cajasRaw, // Se guarda como texto en informe para no perder ceros si los hubiera
                 campo: tr.querySelector('[data-campo="campo"]').innerText.trim(),
                 observacion: tr.querySelector('[data-campo="observacion"]').innerText.trim()
             };
             registrosInforme.push(dataFila);
 
-            // Sincronización con Planificación Diaria (distribucion_diaria)
-            // Solo intentamos sincronizar si hay un contenedor o un booking válido
-            if (contenedor || booking) {
-                let query = _supabase.from('distribucion_diaria').update({
+            // Sincronización Directa con Distribución Diaria
+            if (contenedor && contenedor !== "") {
+                await _supabase.from('distribucion_diaria').update({
                     vapor: vapor,
                     marca: marca,
-                    cajas: cajas !== "" ? parseInt(cajas) : null,
-                    terminal: puerto,
-                    contenedor: contenedor // Por si se editó el contenedor en la tabla
-                });
-
-                // Si hay contenedor, es más preciso. Si no, usamos el booking.
-                if (contenedor) {
-                    query = query.eq('contenedor', contenedor);
-                } else {
-                    query = query.eq('booking', booking);
-                }
-                promesasSincronizacion.push(query);
+                    cajas: cajasNum,
+                    terminal: puerto
+                }).eq('contenedor', contenedor);
+            } else if (booking) {
+                // Si no hay contenedor todavía, intentamos actualizar por Booking
+                await _supabase.from('distribucion_diaria').update({
+                    vapor: vapor,
+                    marca: marca,
+                    cajas: cajasNum,
+                    terminal: puerto
+                }).eq('booking', booking);
             }
-        });
+        }
 
         try {
-            // 1. Guardar en tabla de informe consolidado
             const { error: errorInf } = await _supabase.from('informe_contenedores_final').upsert(registrosInforme, { onConflict: 'semana, booking, indice_fila' });
             if (errorInf) throw errorInf;
 
-            // 2. Ejecutar todas las sincronizaciones pendientes
-            await Promise.all(promesasSincronizacion);
-
-            alert("¡Informe guardado y Planificación sincronizada!");
+            alert("¡Informe guardado y Cajas sincronizadas en Planificación!");
+            cargarInforme(); // Recargar para confirmar datos
         } catch (err) {
             console.error(err);
             alert("Error al guardar: " + err.message);
