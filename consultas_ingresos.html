@@ -163,15 +163,15 @@
             </div>
             <div class="row g-2 mb-2">
                 <div class="col-6"><label class="data-label">S. Naviera</label><input type="text" id="inNaviera" class="form-control-edit sello-input"></div>
-                <div class="col-6"><label class="data-label">S. Ventolera</label><input type="text" id="inVerificador" class="form-control-edit sello-input"></div>
-            </div>
-            <div class="row g-2 mb-2">
                 <div class="col-6"><label class="data-label">S. Adhesivo</label><input type="text" id="inAdhesivo" class="form-control-edit sello-input"></div>
-                <div class="col-6"><label class="data-label">S. TCI</label><input type="text" id="inTci" class="form-control-edit sello-input"></div>
             </div>
             <div class="row g-2 mb-2">
+                <div class="col-6"><label class="data-label">S. TCI</label><input type="text" id="inTci" class="form-control-edit sello-input"></div>
                 <div class="col-6"><label class="data-label">S. Seguridad</label><input type="text" id="inSeguridad" class="form-control-edit sello-input"></div>
+            </div>
+            <div class="row g-2 mb-2">
                 <div class="col-6"><label class="data-label">Termógrafo</label><input type="text" id="inTermografo" class="form-control-edit sello-input"></div>
+                <div class="col-6"><label class="data-label">Verificador</label><input type="text" id="inVerificador" class="form-control-edit sello-input"></div>
             </div>
             
             <div class="mb-2"><label class="data-label">Fecha de Carga</label><input type="date" id="inFecha" class="form-control-edit"></div>
@@ -205,7 +205,6 @@
             
             const { data: cargo } = await _supabase.from('reporte_daes').select('*').eq('booking', plan.booking).maybeSingle();
 
-            // Llenado de campos fijos
             document.getElementById('outContenedor').innerText = plan.contenedor || '';
             document.getElementById('outBooking').innerText = plan.booking || '';
             document.getElementById('outDae').innerText = cargo ? (cargo.dae || '---') : '---';
@@ -213,7 +212,7 @@
             document.getElementById('outEmpresa').innerText = cargo ? (cargo.empresa || '---') : '---';
             document.getElementById('outDestino').innerText = cargo ? (cargo.destino || '---') : '---';
 
-            // ASIGNACIÓN PRIORITARIA: Siempre toma el vapor de la columna 'barco' de reporte_daes
+            // Nave desde la columna 'barco' de DAEs
             document.getElementById('inVapor').value = cargo ? (cargo.barco || '') : '';
             
             document.getElementById('inCodigo').value = plan.codigo || '';
@@ -228,14 +227,13 @@
             document.getElementById('inTerminal').value = plan.terminal || '';
             document.getElementById('inCajas').value = plan.cajas !== null ? plan.cajas : ""; 
 
-            // Mapeo de Sellos (Recuperación desde DB según tus especificaciones)
+            // Recuperación de Sellos (Mapeo corregido)
             document.getElementById('inNaviera').value = plan.sello_nav || '';
             document.getElementById('inAdhesivo').value = plan.sello_sticker || '';
             document.getElementById('inTci').value = plan.sello_tci || '';
             document.getElementById('inSeguridad').value = plan.sello_sticker_nav || '';
             document.getElementById('inTermografo').value = plan.termografo || '';
-            document.getElementById('inVerificador').value = plan.sello_vent || ''; // Verificador mapeado a sello_vent
-            document.getElementById('inVentolera').value = plan.sello_vent || ''; // Ambos muestran lo mismo según tu instrucción
+            document.getElementById('inVerificador').value = plan.sello_vent || ''; 
             
             document.getElementById('inFecha').value = plan.fecha_ingreso || new Date().toISOString().split('T')[0];
 
@@ -265,7 +263,7 @@
             terminal: document.getElementById('inTerminal').value,
             cajas: valorCajas !== "" ? parseInt(valorCajas) : null,
             
-            // MAPEO CORRECTO DE SELLOS SEGÚN TU DB
+            // Mapeo Final de Sellos a Base de Datos
             sello_nav: document.getElementById('inNaviera').value,
             sello_sticker: document.getElementById('inAdhesivo').value,
             sello_tci: document.getElementById('inTci').value,
