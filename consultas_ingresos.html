@@ -11,7 +11,7 @@
     <style>
         body { 
             background-color: #f0f2f5; 
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             font-size: 12px; 
             color: #333;
         }
@@ -33,7 +33,7 @@
         }
 
         .main-container {
-            max-width: 1200px;
+            max-width: 1250px;
             margin: 10px auto;
             background: white;
             border-radius: 4px;
@@ -41,25 +41,33 @@
             padding: 15px;
         }
 
+        .col-title {
+            background: #002855;
+            color: white;
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 12px;
+            border-radius: 2px;
+            text-transform: uppercase;
+        }
+
         .data-label {
             font-size: 10px;
-            color: #666;
+            color: #555;
             font-weight: bold;
             text-transform: uppercase;
             margin-bottom: 1px;
+            display: block;
         }
 
         .info-static, .form-control-edit {
             height: 28px;
             padding: 2px 8px;
             font-size: 12px;
-            font-family: Arial, sans-serif;
             border-radius: 2px;
             width: 100%;
             border: 1px solid #ccc;
-            background: #fff;
-            display: flex;
-            align-items: center;
             box-sizing: border-box;
         }
 
@@ -67,132 +75,137 @@
             background: #f8f9fa;
             font-weight: bold;
             border-color: #e9ecef;
+            display: flex;
+            align-items: center;
         }
 
-        /* Títulos de sección compactos */
-        .col-title {
-            background: #002855;
-            color: white;
-            padding: 3px 8px;
-            font-size: 11px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            border-radius: 2px;
+        .vertical-divider {
+            border-left: 2px solid #f0f2f5;
+            padding-left: 20px;
         }
 
-        /* Colores especiales */
         .sello-input { background-color: #fffde7 !important; border-color: #ffd600 !important; }
-        .cajas-input { background-color: #e3f2fd !important; border-color: #2196f3 !important; font-weight: bold; font-size: 14px !important; text-align: center; }
+        .cajas-input { background-color: #e3f2fd !important; border-color: #2196f3 !important; font-weight: bold; text-align: center; height: 35px; font-size: 16px; }
 
         .btn-save {
             background: #28a745;
             color: white;
             border: none;
-            padding: 8px;
+            padding: 10px;
             width: 100%;
             font-weight: bold;
             border-radius: 3px;
-            margin-top: 10px;
+            margin-top: 15px;
+            transition: 0.2s;
         }
 
-        .loading-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(255,255,255,0.7);
-            display: none; justify-content: center; align-items: center; z-index: 1000;
-        }
-
-        .vertical-divider {
-            border-left: 1px solid #dee2e6;
-            padding-left: 15px;
-        }
+        .btn-save:hover { background: #218838; }
     </style>
 </head>
 <body>
 
-<div class="loading-overlay" id="loading">
-    <div class="spinner-border text-primary" role="status"></div>
-</div>
-
-<div class="navbar-custom">
-    CARGO PLAN | REGISTRO DE DESPACHO
-</div>
+<div class="navbar-custom">CARGO PLAN | CONTROL DE DESPACHOS</div>
 
 <div class="search-box">
-    <div class="input-group input-group-sm" style="max-width: 300px;">
-        <input type="text" id="txtBusqueda" class="form-control" placeholder="CONTENEDOR..." oninput="this.value = this.value.toUpperCase()">
+    <div class="input-group input-group-sm" style="max-width: 350px;">
+        <span class="input-group-text bg-white">CONTENEDOR</span>
+        <input type="text" id="txtBusqueda" class="form-control" oninput="this.value = this.value.toUpperCase()">
         <button class="btn btn-primary" onclick="buscarContenedor()"><i class="bi bi-search"></i></button>
     </div>
 </div>
 
 <div id="panelPrincipal" style="display:none;" class="main-container">
-    <div class="row g-3">
+    <div class="row">
         
-        <div class="col-md-8">
-            <div class="col-title">INFORMACIÓN DE DISPOSICIÓN Y LOGÍSTICA</div>
+        <div class="col-md-7">
+            <div class="col-title">Información de Disposición</div>
             
-            <div class="row g-2 mb-2">
+            <div class="row g-2 mb-3">
                 <div class="col-md-4"><label class="data-label">Contenedor</label><div id="outContenedor" class="info-static"></div></div>
                 <div class="col-md-4"><label class="data-label">Booking</label><div id="outBooking" class="info-static"></div></div>
                 <div class="col-md-4"><label class="data-label">N° DAE</label><div id="outDae" class="info-static text-danger"></div></div>
             </div>
 
-            <div class="row g-2 mb-2">
-                <div class="col-md-6"><label class="data-label">Empresa (Exportadora)</label><div id="outEmpresa" class="info-static"></div></div>
+            <div class="row g-2 mb-3">
                 <div class="col-md-6"><label class="data-label">Consignatario (Cliente)</label><div id="outCliente" class="info-static"></div></div>
+                <div class="col-md-6"><label class="data-label">Empresa</label><div id="outEmpresa" class="info-static text-primary"></div></div>
             </div>
 
-            <div class="row g-2 mb-2">
+            <div class="row g-2 mb-3">
                 <div class="col-md-4"><label class="data-label">Destino</label><div id="outDestino" class="info-static"></div></div>
-                <div class="col-md-4"><label class="data-label">Nave (Vapor/Buque)</label><input type="text" id="inVapor" class="form-control-edit"></div>
-                <div class="col-md-4"><label class="data-label">Marca</label><input type="text" id="inMarca" class="form-control-edit"></div>
+                <div class="col-md-5"><label class="data-label">Nave (Vapor/Buque)</label><input type="text" id="inVapor" class="form-control-edit"></div>
+                <div class="col-md-3"><label class="data-label">Marca</label><input type="text" id="inMarca" class="form-control-edit"></div>
             </div>
 
-            <div class="row g-2 mb-2">
-                <div class="col-md-4"><label class="data-label">Proveedor</label><input type="text" id="inProveedor" class="form-control-edit"></div>
-                <div class="col-md-4"><label class="data-label">Productor</label><input type="text" id="inProductor" class="form-control-edit"></div>
-                <div class="col-md-4"><label class="data-label">Finca</label><input type="text" id="inFinca" class="form-control-edit"></div>
+            <div class="row g-2 mb-3">
+                <div class="col-md-6"><label class="data-label">Proveedor</label><input type="text" id="inProveedor" class="form-control-edit"></div>
+                <div class="col-md-6"><label class="data-label">Productor</label><input type="text" id="inProductor" class="form-control-edit"></div>
             </div>
 
-            <div class="row g-2 mb-2">
+            <div class="row g-2 mb-3">
+                <div class="col-md-6"><label class="data-label">Finca</label><input type="text" id="inFinca" class="form-control-edit"></div>
                 <div class="col-md-3"><label class="data-label">Código</label><input type="text" id="inCodigo" class="form-control-edit"></div>
-                <div class="col-md-4"><label class="data-label">Depósito</label><input type="text" id="inDeposito" class="form-control-edit"></div>
-                <div class="col-md-5"><label class="data-label">Terminal / Puerto</label><input type="text" id="inTerminal" class="form-control-edit"></div>
+                <div class="col-md-3"><label class="data-label">Placa</label><input type="text" id="inPlaca" class="form-control-edit"></div>
+            </div>
+
+            <div class="row g-2 mb-3">
+                <div class="col-md-6"><label class="data-label">Depósito</label><input type="text" id="inDeposito" class="form-control-edit"></div>
+                <div class="col-md-6"><label class="data-label">Terminal / Puerto</label><input type="text" id="inTerminal" class="form-control-edit"></div>
             </div>
 
             <div class="row g-2">
-                <div class="col-md-5"><label class="data-label">Chofer</label><input type="text" id="inChofer" class="form-control-edit"></div>
+                <div class="col-md-8"><label class="data-label">Chofer</label><input type="text" id="inChofer" class="form-control-edit"></div>
                 <div class="col-md-4"><label class="data-label">Cédula</label><input type="text" id="inCedula" class="form-control-edit"></div>
-                <div class="col-md-3"><label class="data-label">Placa</label><input type="text" id="inPlaca" class="form-control-edit"></div>
             </div>
         </div>
 
-        <div class="col-md-4 vertical-divider">
-            <div class="col-title">CAJAS Y SEGURIDAD (SELLOS)</div>
+        <div class="col-md-5 vertical-divider">
+            <div class="col-title">Control de Carga y Sellos</div>
             
             <div class="mb-3">
                 <label class="data-label text-primary">CANTIDAD DE CAJAS</label>
-                <input type="number" id="inCajas" class="form-control-edit cajas-input" placeholder="0">
+                <input type="number" id="inCajas" class="form-control-edit cajas-input">
             </div>
 
             <div class="row g-2">
-                <div class="col-6"><label class="data-label">S. Naviera</label><input type="text" id="inNaviera" class="form-control-edit sello-input"></div>
-                <div class="col-6"><label class="data-label">S. Termo</label><input type="text" id="inTermo" class="form-control-edit sello-input"></div>
-                
-                <div class="col-6"><label class="data-label">S. Exportadora</label><input type="text" id="inExportadora" class="form-control-edit sello-input"></div>
-                <div class="col-6"><label class="data-label">S. Seguridad</label><input type="text" id="inSeguridad" class="form-control-edit sello-input"></div>
-                
-                <div class="col-6"><label class="data-label">Adhesivo</label><input type="text" id="inAdhesivo" class="form-control-edit sello-input"></div>
-                <div class="col-12"><label class="data-label">N° Termógrafo</label><input type="text" id="inTermografo" class="form-control-edit sello-input"></div>
-                
-                <div class="col-12"><label class="data-label">Inspector / Verificador</label><input type="text" id="inVerificador" class="form-control-edit sello-input"></div>
-                <div class="col-12"><label class="data-label">Fecha Carga</label><input type="date" id="inFecha" class="form-control-edit sello-input"></div>
+                <div class="col-6">
+                    <label class="data-label">Sello Naviera</label>
+                    <input type="text" id="inNaviera" class="form-control-edit sello-input">
+                </div>
+                <div class="col-6">
+                    <label class="data-label">Sello Ventolera</label>
+                    <input type="text" id="inVentolera" class="form-control-edit sello-input">
+                </div>
+                <div class="col-6">
+                    <label class="data-label">Sello Adhesivo</label>
+                    <input type="text" id="inAdhesivo" class="form-control-edit sello-input">
+                </div>
+                <div class="col-6">
+                    <label class="data-label">Sello TCI</label>
+                    <input type="text" id="inTci" class="form-control-edit sello-input">
+                </div>
+                <div class="col-6">
+                    <label class="data-label">Sello Seguridad</label>
+                    <input type="text" id="inSeguridad" class="form-control-edit sello-input">
+                </div>
+                <div class="col-6">
+                    <label class="data-label">Termógrafo</label>
+                    <input type="text" id="inTermografo" class="form-control-edit sello-input">
+                </div>
+                <div class="col-12">
+                    <label class="data-label">Verificador (Inspector)</label>
+                    <input type="text" id="inVerificador" class="form-control-edit sello-input">
+                </div>
+                <div class="col-12">
+                    <label class="data-label">Fecha de Carga</label>
+                    <input type="date" id="inFecha" class="form-control-edit">
+                </div>
             </div>
 
             <button class="btn-save" onclick="actualizarDatos()">
-                <i class="bi bi-cloud-arrow-up-fill me-2"></i> GUARDAR REGISTRO
+                <i class="bi bi-save me-2"></i> GUARDAR DATOS
             </button>
         </div>
-
     </div>
 </div>
 
@@ -201,102 +214,79 @@
     let currentId = null;
 
     async function buscarContenedor() {
-        const busqueda = document.getElementById('txtBusqueda').value.trim().toUpperCase();
+        const busqueda = document.getElementById('txtBusqueda').value.trim();
         if(!busqueda) return;
-        document.getElementById('loading').style.display = 'flex';
 
         try {
             const { data: plan } = await _supabase.from('distribucion_diaria').select('*').eq('contenedor', busqueda).maybeSingle();
+            if(!plan) { alert("No encontrado"); return; }
             
-            if(!plan) {
-                alert("No se encontró el contenedor.");
-                document.getElementById('loading').style.display = 'none';
-                return;
-            }
             currentId = plan.id;
-
             const { data: cargo } = await _supabase.from('reporte_daes').select('*').eq('booking', plan.booking).maybeSingle();
 
-            // Mapeo Visual
+            // Llenar datos
             document.getElementById('outContenedor').innerText = plan.contenedor || '';
             document.getElementById('outBooking').innerText = plan.booking || '';
             document.getElementById('outDae').innerText = cargo ? cargo.dae : '---';
-            document.getElementById('outEmpresa').innerText = cargo ? cargo.empresa : '---';
             document.getElementById('outCliente').innerText = cargo ? (cargo.consignatario || cargo.cliente) : '---';
+            document.getElementById('outEmpresa').innerText = cargo ? cargo.empresa : '---';
             document.getElementById('outDestino').innerText = cargo ? cargo.destino : '---';
 
-            // Inputs
-            document.getElementById('inVapor').value = plan.vapor || (cargo ? cargo.barco : '');
-            document.getElementById('inMarca').value = plan.marca || (cargo ? cargo.marca : '');
+            document.getElementById('inVapor').value = plan.vapor || '';
+            document.getElementById('inMarca').value = plan.marca || '';
             document.getElementById('inProveedor').value = plan.proveedor || '';
             document.getElementById('inProductor').value = plan.productor || '';
             document.getElementById('inFinca').value = plan.finca || '';
             document.getElementById('inCodigo').value = plan.codigo || '';
             document.getElementById('inDeposito').value = plan.deposito || '';
             document.getElementById('inTerminal').value = plan.terminal || '';
-            document.getElementById('inCajas').value = plan.cajas || '';
             document.getElementById('inChofer').value = plan.chofer || '';
             document.getElementById('inCedula').value = plan.cedula || '';
             document.getElementById('inPlaca').value = plan.placa || '';
-            
-            // Sellos
+            document.getElementById('inCajas').value = plan.cajas || '';
+
+            // Sellos actualizados
             document.getElementById('inNaviera').value = plan.sello_naviera || '';
-            document.getElementById('inTermo').value = plan.sello_termo || '';
-            document.getElementById('inExportadora').value = plan.sello_exportadora || '';
-            document.getElementById('inSeguridad').value = plan.sello_seguridad || '';
+            document.getElementById('inVentolera').value = plan.sello_ventolera || '';
             document.getElementById('inAdhesivo').value = plan.sello_adhesivo || '';
+            document.getElementById('inTci').value = plan.sello_tci || '';
+            document.getElementById('inSeguridad').value = plan.sello_seguridad || '';
             document.getElementById('inTermografo').value = plan.termografo || '';
             document.getElementById('inVerificador').value = plan.verificador || '';
             document.getElementById('inFecha').value = plan.fecha_ingreso || new Date().toISOString().split('T')[0];
 
             document.getElementById('panelPrincipal').style.display = 'block';
-
-        } catch (error) {
-            console.error(error);
-        } finally {
-            document.getElementById('loading').style.display = 'none';
-        }
+        } catch (e) { console.error(e); }
     }
 
     async function actualizarDatos() {
         if(!currentId) return;
-        document.getElementById('loading').style.display = 'flex';
-
-        const dataUpdate = {
-            vapor: document.getElementById('inVapor').value.trim(),
-            marca: document.getElementById('inMarca').value.trim(),
-            proveedor: document.getElementById('inProveedor').value.trim(),
-            productor: document.getElementById('inProductor').value.trim(),
-            finca: document.getElementById('inFinca').value.trim(),
-            codigo: document.getElementById('inCodigo').value.trim(),
-            deposito: document.getElementById('inDeposito').value.trim(),
-            terminal: document.getElementById('inTerminal').value.trim(),
-            cajas: document.getElementById('inCajas').value.trim(),
-            chofer: document.getElementById('inChofer').value.trim(),
-            cedula: document.getElementById('inCedula').value.trim(),
-            placa: document.getElementById('inPlaca').value.trim(),
-            sello_naviera: document.getElementById('inNaviera').value.trim(),
-            sello_termo: document.getElementById('inTermo').value.trim(),
-            sello_exportadora: document.getElementById('inExportadora').value.trim(),
-            sello_seguridad: document.getElementById('inSeguridad').value.trim(),
-            sello_adhesivo: document.getElementById('inAdhesivo').value.trim(),
-            termografo: document.getElementById('inTermografo').value.trim(),
-            verificador: document.getElementById('inVerificador').value.trim(),
+        const upd = {
+            vapor: document.getElementById('inVapor').value,
+            marca: document.getElementById('inMarca').value,
+            proveedor: document.getElementById('inProveedor').value,
+            productor: document.getElementById('inProductor').value,
+            finca: document.getElementById('inFinca').value,
+            codigo: document.getElementById('inCodigo').value,
+            deposito: document.getElementById('inDeposito').value,
+            terminal: document.getElementById('inTerminal').value,
+            chofer: document.getElementById('inChofer').value,
+            cedula: document.getElementById('inCedula').value,
+            placa: document.getElementById('inPlaca').value,
+            cajas: document.getElementById('inCajas').value,
+            sello_naviera: document.getElementById('inNaviera').value,
+            sello_ventolera: document.getElementById('inVentolera').value,
+            sello_adhesivo: document.getElementById('inAdhesivo').value,
+            sello_tci: document.getElementById('inTci').value,
+            sello_seguridad: document.getElementById('inSeguridad').value,
+            termografo: document.getElementById('inTermografo').value,
+            verificador: document.getElementById('inVerificador').value,
             fecha_ingreso: document.getElementById('inFecha').value
         };
 
-        const { error } = await _supabase.from('distribucion_diaria').update(dataUpdate).eq('id', currentId);
-
-        if(!error) {
-            alert("GUARDADO CORRECTAMENTE.");
-            location.reload();
-        } else {
-            alert("ERROR AL GUARDAR.");
-            document.getElementById('loading').style.display = 'none';
-        }
+        const { error } = await _supabase.from('distribucion_diaria').update(upd).eq('id', currentId);
+        if(!error) { alert("Éxito"); location.reload(); }
     }
-
-    document.getElementById('txtBusqueda').addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarContenedor(); });
 </script>
 </body>
 </html>
