@@ -15,7 +15,6 @@
             font-size: 11px; 
             color: #333;
         }
-
         .navbar-custom {
             background: #1a237e;
             color: white;
@@ -23,7 +22,6 @@
             font-weight: bold;
             text-align: center;
         }
-
         .search-box {
             background: white;
             border-radius: 4px;
@@ -33,7 +31,6 @@
             max-width: 450px;
             border: 1px solid #ddd;
         }
-
         .main-container {
             max-width: 1300px;
             margin: 0 auto 30px auto;
@@ -42,7 +39,6 @@
             border-radius: 6px;
             box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-
         .col-title {
             background: #f8f9fa;
             color: #1a237e;
@@ -53,7 +49,6 @@
             border-left: 4px solid #1a237e;
             text-transform: uppercase;
         }
-
         .data-label {
             font-size: 10px;
             color: #666;
@@ -62,7 +57,6 @@
             margin-bottom: 2px;
             display: block;
         }
-
         .info-static, .form-control-edit {
             height: 28px;
             padding: 2px 8px;
@@ -76,19 +70,16 @@
             align-items: center;
             box-sizing: border-box;
         }
-
         .info-static {
             background: #e9ecef;
             font-weight: bold;
             color: #212529;
             border-color: #dee2e6;
         }
-
         .vertical-divider {
             border-left: 1px solid #eee;
             padding-left: 20px;
         }
-
         .sello-input { background-color: #fffde7 !important; border-color: #ffd600 !important; }
         .cajas-input { 
             background-color: #e3f2fd !important; 
@@ -99,7 +90,6 @@
             text-align: center;
             color: #0d6efd;
         }
-
         .btn-save {
             background: #2e7d32;
             color: white;
@@ -111,7 +101,6 @@
             margin-top: 20px;
             cursor: pointer;
         }
-
         .btn-save:hover { background: #1b5e20; }
     </style>
 </head>
@@ -209,11 +198,7 @@
                 .eq('contenedor', busqueda);
 
             if (error) throw error;
-
-            if(!data || data.length === 0) { 
-                alert("¡CONTENEDOR NO PLANIFICADO!"); 
-                return; 
-            }
+            if(!data || data.length === 0) { alert("¡CONTENEDOR NO PLANIFICADO!"); return; }
 
             const plan = data[0];
             currentId = plan.id;
@@ -223,13 +208,14 @@
             // Llenado de campos fijos
             document.getElementById('outContenedor').innerText = plan.contenedor || '';
             document.getElementById('outBooking').innerText = plan.booking || '';
-            document.getElementById('outDae').innerText = cargo ? cargo.dae : '---';
-            document.getElementById('outCliente').innerText = cargo ? (cargo.consignatario || cargo.cliente) : '---';
-            document.getElementById('outEmpresa').innerText = cargo ? cargo.empresa : '---';
-            document.getElementById('outDestino').innerText = cargo ? cargo.destino : '---';
+            document.getElementById('outDae').innerText = cargo ? (cargo.dae || '---') : '---';
+            document.getElementById('outCliente').innerText = cargo ? (cargo.consignatario || cargo.cliente || '---') : '---';
+            document.getElementById('outEmpresa').innerText = cargo ? (cargo.empresa || '---') : '---';
+            document.getElementById('outDestino').innerText = cargo ? (cargo.destino || '---') : '---';
 
-            // Llenado de campos editables
-            document.getElementById('inVapor').value = plan.vapor || '';
+            // ASIGNACIÓN PRIORITARIA: Siempre toma el vapor de la columna 'barco' de reporte_daes
+            document.getElementById('inVapor').value = cargo ? (cargo.barco || '') : '';
+            
             document.getElementById('inCodigo').value = plan.codigo || '';
             document.getElementById('inChofer').value = plan.chofer || '';
             document.getElementById('inCedula').value = plan.cedula || '';
@@ -242,14 +228,15 @@
             document.getElementById('inTerminal').value = plan.terminal || '';
             document.getElementById('inCajas').value = plan.cajas !== null ? plan.cajas : ""; 
 
-            // Llenado de Sellos con mapeo correcto desde DB
+            // Mapeo de Sellos (Recuperación desde DB según tus especificaciones)
             document.getElementById('inNaviera').value = plan.sello_nav || '';
-            document.getElementById('inVentolera').value = plan.sello_vent || '';
             document.getElementById('inAdhesivo').value = plan.sello_sticker || '';
             document.getElementById('inTci').value = plan.sello_tci || '';
             document.getElementById('inSeguridad').value = plan.sello_sticker_nav || '';
             document.getElementById('inTermografo').value = plan.termografo || '';
-            document.getElementById('inVerificador').value = plan.verificador || '';
+            document.getElementById('inVerificador').value = plan.sello_vent || ''; // Verificador mapeado a sello_vent
+            document.getElementById('inVentolera').value = plan.sello_vent || ''; // Ambos muestran lo mismo según tu instrucción
+            
             document.getElementById('inFecha').value = plan.fecha_ingreso || new Date().toISOString().split('T')[0];
 
             document.getElementById('panelPrincipal').style.display = 'block';
@@ -278,15 +265,14 @@
             terminal: document.getElementById('inTerminal').value,
             cajas: valorCajas !== "" ? parseInt(valorCajas) : null,
             
-            // MAPEO CORRECTO DE COLUMNAS SEGÚN TU DB
+            // MAPEO CORRECTO DE SELLOS SEGÚN TU DB
             sello_nav: document.getElementById('inNaviera').value,
             sello_sticker: document.getElementById('inAdhesivo').value,
             sello_tci: document.getElementById('inTci').value,
             sello_sticker_nav: document.getElementById('inSeguridad').value,
             termografo: document.getElementById('inTermografo').value,
-            sello_vent: document.getElementById('inVerificador').value, // verificador con sello_vent
+            sello_vent: document.getElementById('inVerificador').value,
             
-            verificador: document.getElementById('inVerificador').value, // Mantiene dato en columna original si existe
             fecha_ingreso: document.getElementById('inFecha').value
         };
 
@@ -294,7 +280,7 @@
         
         if(!error) { 
             alert("¡REGISTRO ACTUALIZADO CON ÉXITO!"); 
-            buscarContenedor(); // Refresca los datos en pantalla
+            buscarContenedor();
         } else {
             alert("Error al guardar: " + error.message);
         }
