@@ -9,18 +9,109 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        body { background-color: #f4f7f9; font-family: Arial, sans-serif; font-size: 11px; color: #333; }
-        .navbar-custom { background: #1a237e; color: white; padding: 10px 15px; font-weight: bold; text-align: center; }
-        .search-box { background: white; border-radius: 4px; padding: 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin: 20px auto; max-width: 450px; border: 1px solid #ddd; }
-        .main-container { max-width: 1300px; margin: 0 auto 30px auto; background: white; padding: 20px; border-radius: 6px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .col-title { background: #f8f9fa; color: #1a237e; padding: 5px 10px; font-size: 12px; font-weight: bold; margin-bottom: 15px; border-left: 4px solid #1a237e; text-transform: uppercase; }
-        .data-label { font-size: 10px; color: #666; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; display: block; }
-        .info-static, .form-control-edit { height: 28px; padding: 2px 8px; font-size: 11px; border-radius: 3px; width: 100%; border: 1px solid #ced4da; background: #ffffff; display: flex; align-items: center; box-sizing: border-box; }
-        .info-static { background: #e9ecef; font-weight: bold; color: #212529; border-color: #dee2e6; }
-        .vertical-divider { border-left: 1px solid #eee; padding-left: 20px; }
+        body { 
+            background-color: #f4f7f9; 
+            font-family: Arial, sans-serif;
+            font-size: 11px; 
+            color: #333;
+        }
+
+        .navbar-custom {
+            background: #1a237e;
+            color: white;
+            padding: 10px 15px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .search-box {
+            background: white;
+            border-radius: 4px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            max-width: 450px;
+            border: 1px solid #ddd;
+        }
+
+        .main-container {
+            max-width: 1300px;
+            margin: 0 auto 30px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .col-title {
+            background: #f8f9fa;
+            color: #1a237e;
+            padding: 5px 10px;
+            font-size: 12px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            border-left: 4px solid #1a237e;
+            text-transform: uppercase;
+        }
+
+        .data-label {
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 2px;
+            display: block;
+        }
+
+        .info-static, .form-control-edit {
+            height: 28px;
+            padding: 2px 8px;
+            font-size: 11px;
+            font-family: Arial, sans-serif;
+            border-radius: 3px;
+            width: 100%;
+            border: 1px solid #ced4da;
+            background: #ffffff;
+            display: flex;
+            align-items: center;
+            box-sizing: border-box;
+        }
+
+        .info-static {
+            background: #e9ecef;
+            font-weight: bold;
+            color: #212529;
+            border-color: #dee2e6;
+        }
+
+        .vertical-divider {
+            border-left: 1px solid #eee;
+            padding-left: 20px;
+        }
+
         .sello-input { background-color: #fffde7 !important; border-color: #ffd600 !important; }
-        .cajas-input { background-color: #e3f2fd !important; border-color: #0d6efd !important; font-weight: bold; height: 38px !important; font-size: 18px !important; text-align: center; color: #0d6efd; }
-        .btn-save { background: #2e7d32; color: white; border: none; padding: 12px; width: 100%; font-weight: bold; border-radius: 4px; margin-top: 20px; cursor: pointer; }
+        .cajas-input { 
+            background-color: #e3f2fd !important; 
+            border-color: #0d6efd !important; 
+            font-weight: bold; 
+            height: 38px !important; 
+            font-size: 18px !important; 
+            text-align: center;
+            color: #0d6efd;
+        }
+
+        .btn-save {
+            background: #2e7d32;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            font-weight: bold;
+            border-radius: 4px;
+            margin-top: 20px;
+            cursor: pointer;
+        }
+
         .btn-save:hover { background: #1b5e20; }
     </style>
 </head>
@@ -41,6 +132,7 @@
 
 <div id="panelPrincipal" style="display:none;" class="main-container">
     <div class="row g-4">
+        
         <div class="col-md-4">
             <div class="col-title">Disposición del Cliente</div>
             <div class="mb-3"><label class="data-label">Contenedor</label><div id="outContenedor" class="info-static"></div></div>
@@ -78,7 +170,7 @@
             <div class="col-title">Control de Carga y Sellos</div>
             <div class="mb-3">
                 <label class="data-label text-primary">CANTIDAD DE CAJAS</label>
-                <input type="number" id="inCajas" class="form-control-edit cajas-input">
+                <input type="number" id="inCajas" class="form-control-edit cajas-input" step="1">
             </div>
             <div class="row g-2 mb-2">
                 <div class="col-6"><label class="data-label">S. Naviera</label><input type="text" id="inNaviera" class="form-control-edit sello-input"></div>
@@ -111,18 +203,24 @@
         if(!busqueda) return;
 
         try {
-            const { data: plan } = await _supabase
+            const { data, error } = await _supabase
                 .from('distribucion_diaria')
                 .select('*')
-                .eq('contenedor', busqueda)
-                .maybeSingle();
+                .eq('contenedor', busqueda);
 
-            if(!plan) { alert("¡CONTENEDOR NO PLANIFICADO!"); return; }
-            
+            if (error) throw error;
+
+            if(!data || data.length === 0) { 
+                alert("¡CONTENEDOR NO PLANIFICADO!"); 
+                return; 
+            }
+
+            const plan = data[0];
             currentId = plan.id;
+            
             const { data: cargo } = await _supabase.from('reporte_daes').select('*').eq('booking', plan.booking).maybeSingle();
 
-            // Mapeo de campos fijos
+            // Llenado de campos fijos
             document.getElementById('outContenedor').innerText = plan.contenedor || '';
             document.getElementById('outBooking').innerText = plan.booking || '';
             document.getElementById('outDae').innerText = cargo ? cargo.dae : '---';
@@ -130,7 +228,7 @@
             document.getElementById('outEmpresa').innerText = cargo ? cargo.empresa : '---';
             document.getElementById('outDestino').innerText = cargo ? cargo.destino : '---';
 
-            // Mapeo de campos editables
+            // Llenado de campos editables
             document.getElementById('inVapor').value = plan.vapor || '';
             document.getElementById('inCodigo').value = plan.codigo || '';
             document.getElementById('inChofer').value = plan.chofer || '';
@@ -142,14 +240,14 @@
             document.getElementById('inMarca').value = plan.marca || '';
             document.getElementById('inDeposito').value = plan.deposito || '';
             document.getElementById('inTerminal').value = plan.terminal || '';
-            document.getElementById('inCajas').value = plan.cajas || ""; 
+            document.getElementById('inCajas').value = plan.cajas !== null ? plan.cajas : ""; 
 
-            // Sellos (Verifica que estos nombres coincidan con Supabase)
-            document.getElementById('inNaviera').value = plan.sello_naviera || '';
-            document.getElementById('inVentolera').value = plan.sello_ventolera || '';
-            document.getElementById('inAdhesivo').value = plan.sello_adhesivo || '';
+            // Llenado de Sellos con mapeo correcto desde DB
+            document.getElementById('inNaviera').value = plan.sello_nav || '';
+            document.getElementById('inVentolera').value = plan.sello_vent || '';
+            document.getElementById('inAdhesivo').value = plan.sello_sticker || '';
             document.getElementById('inTci').value = plan.sello_tci || '';
-            document.getElementById('inSeguridad').value = plan.sello_seguridad || '';
+            document.getElementById('inSeguridad').value = plan.sello_sticker_nav || '';
             document.getElementById('inTermografo').value = plan.termografo || '';
             document.getElementById('inVerificador').value = plan.verificador || '';
             document.getElementById('inFecha').value = plan.fecha_ingreso || new Date().toISOString().split('T')[0];
@@ -162,12 +260,10 @@
         if(!currentId) return;
         const btn = document.getElementById('btnGuardarTodo');
         btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> GUARDANDO...';
+        btn.innerHTML = "GUARDANDO...";
         
         const valorCajas = document.getElementById('inCajas').value;
         
-        // Objeto de actualización
-        // IMPORTANTE: Si una columna da error, asegúrate de que el nombre sea exacto en Supabase
         const upd = {
             vapor: document.getElementById('inVapor').value,
             codigo: document.getElementById('inCodigo').value,
@@ -182,35 +278,28 @@
             terminal: document.getElementById('inTerminal').value,
             cajas: valorCajas !== "" ? parseInt(valorCajas) : null,
             
-            // Sección de Sellos - CORREGIDOS
-            sello_naviera: document.getElementById('inNaviera').value,
-            sello_ventolera: document.getElementById('inVentolera').value, 
-            sello_adhesivo: document.getElementById('inAdhesivo').value,
+            // MAPEO CORRECTO DE COLUMNAS SEGÚN TU DB
+            sello_nav: document.getElementById('inNaviera').value,
+            sello_sticker: document.getElementById('inAdhesivo').value,
             sello_tci: document.getElementById('inTci').value,
-            sello_seguridad: document.getElementById('inSeguridad').value,
+            sello_sticker_nav: document.getElementById('inSeguridad').value,
             termografo: document.getElementById('inTermografo').value,
-            verificador: document.getElementById('inVerificador').value,
+            sello_vent: document.getElementById('inVerificador').value, // verificador con sello_vent
+            
+            verificador: document.getElementById('inVerificador').value, // Mantiene dato en columna original si existe
             fecha_ingreso: document.getElementById('inFecha').value
         };
 
-        try {
-            const { error } = await _supabase.from('distribucion_diaria').update(upd).eq('id', currentId);
-            
-            if(!error) { 
-                alert("¡OPERACIÓN EXITOSA!\nEl registro ha sido actualizado correctamente."); 
-                // No recargamos toda la página, solo refrescamos la búsqueda interna
-                buscarContenedor(); 
-            } else {
-                // Si hay un error de columna, lo mostramos claramente
-                console.error("Error de Supabase:", error);
-                alert("ERROR DE COLUMNA:\n" + error.message + "\n\nTip: Verifica si '" + error.message.split("'")[1] + "' existe en tu tabla.");
-            }
-        } catch (e) {
-            alert("Error crítico de conexión.");
-        } finally {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="bi bi-cloud-check me-2"></i> GUARDAR TODO EL REGISTRO';
+        const { error } = await _supabase.from('distribucion_diaria').update(upd).eq('id', currentId);
+        
+        if(!error) { 
+            alert("¡REGISTRO ACTUALIZADO CON ÉXITO!"); 
+            buscarContenedor(); // Refresca los datos en pantalla
+        } else {
+            alert("Error al guardar: " + error.message);
         }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-cloud-check me-2"></i> GUARDAR TODO EL REGISTRO';
     }
 </script>
 </body>
