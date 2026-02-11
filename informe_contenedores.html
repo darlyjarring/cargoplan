@@ -29,7 +29,7 @@
     </div>
     <div class="d-flex gap-2">
         <button class="btn btn-primary btn-sm" onclick="cargarInforme()"><i class="bi bi-arrow-clockwise"></i> REFRESCAR</button>
-        <button class="btn btn-warning btn-sm fw-bold" onclick="guardarInforme()"><i class="bi bi-cloud-arrow-up"></i> GUARDAR CAMBIOS</button>
+        <button id="btnGuardar" class="btn btn-warning btn-sm fw-bold" onclick="guardarInforme()"><i class="bi bi-cloud-arrow-up"></i> GUARDAR CAMBIOS</button>
         <button class="btn btn-success btn-sm" onclick="exportarExcel()"><i class="bi bi-file-earmark-excel"></i> EXCEL</button>
     </div>
 </div>
@@ -65,6 +65,9 @@
     const SEMANA = params.get('semana') || '6';
     document.getElementById('lblSemana').innerText = SEMANA;
 
+    // Guardaremos los IDs originales de planificación para actualizar por ID, que es más rápido
+    let mapeoPlanificacion = [];
+
     async function cargarInforme() {
         const body = document.getElementById('bodyInforme');
         body.innerHTML = '<tr><td colspan="15" class="text-center py-5">Generando informe...</td></tr>';
@@ -73,6 +76,8 @@
             const { data: daes } = await _supabase.from('reporte_daes').select('*').eq('semana', SEMANA);
             const { data: planif } = await _supabase.from('distribucion_diaria').select('*').eq('semana', SEMANA);
             const { data: informePrevio } = await _supabase.from('informe_contenedores_final').select('*').eq('semana', SEMANA);
+
+            mapeoPlanificacion = planif || [];
 
             let html = "";
             daes.forEach(d => {
@@ -84,7 +89,7 @@
                     const prev = (informePrevio || []).find(ip => ip.booking === d.booking && ip.indice_fila === i) || {};
 
                     html += `
-                        <tr data-booking="${d.booking}" data-indice="${i}">
+                        <tr data-booking="${d.booking}" data-indice="${i}" data-planid="${cReal.id || ''}">
                             <td class="bg-readonly" data-campo="empresa">${d.empresa || ''}</td>
                             <td contenteditable="true" data-campo="naviera">${prev.naviera || ''}</td>
                             <td contenteditable="true" data-campo="marca">${prev.marca || cReal.marca || ''}</td>
@@ -111,46 +116,27 @@
         }
     }
 
-    // NAVEGACIÓN CON FLECHAS
-    document.getElementById('bodyInforme').addEventListener('keydown', function(e) {
-        const cell = e.target;
-        const row = cell.parentElement;
-        const rowIndex = Array.from(this.rows).indexOf(row);
-        const colIndex = cell.cellIndex;
-
-        if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) {
-            e.preventDefault();
-            if(e.key === "ArrowDown") this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
-            if(e.key === "ArrowUp")   this.rows[rowIndex - 1]?.cells[colIndex]?.focus();
-            if(e.key === "ArrowRight") cell.nextElementSibling?.focus();
-            if(e.key === "ArrowLeft")  cell.previousElementSibling?.focus();
-        }
-        if (e.key === "Enter") {
-            e.preventDefault();
-            this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
-        }
-    });
-
     async function guardarInforme() {
-        const btn = document.querySelector('.btn-warning');
+        const btn = document.getElementById('btnGuardar');
         btn.disabled = true;
-        btn.innerHTML = "Guardando...";
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Guardando...';
 
         const filas = document.querySelectorAll('#bodyInforme tr');
         const registrosInforme = [];
+        const promesasActualizacion = [];
 
-        for (const tr of filas) {
+        filas.forEach(tr => {
+            const planId = tr.dataset.planid;
             const booking = tr.dataset.booking;
             const contenedor = tr.querySelector('[data-campo="contenedor"]').innerText.trim();
             const vapor = tr.querySelector('[data-campo="vapor"]').innerText.trim();
             const marca = tr.querySelector('[data-campo="marca"]').innerText.trim();
             const puerto = tr.querySelector('[data-campo="puerto"]').innerText.trim();
-            
-            // Limpieza y validación del número de cajas
-            let cajasRaw = tr.querySelector('[data-campo="cajas"]').innerText.trim();
-            let cajasNum = (cajasRaw === "" || isNaN(cajasRaw)) ? null : parseInt(cajasRaw);
+            const cajasRaw = tr.querySelector('[data-campo="cajas"]').innerText.trim();
+            const cajasNum = (cajasRaw === "" || isNaN(cajasRaw)) ? null : parseInt(cajasRaw);
 
-            const dataFila = {
+            // Objeto para Informe Final
+            registrosInforme.push({
                 semana: SEMANA,
                 booking: booking,
                 indice_fila: parseInt(tr.dataset.indice),
@@ -165,45 +151,60 @@
                 fecha_puerto: tr.querySelector('[data-campo="fecha_puerto"]').innerText.trim(),
                 puerto: puerto,
                 destino: tr.querySelector('[data-campo="destino"]').innerText.trim(),
-                cajas: cajasRaw, // Se guarda como texto en informe para no perder ceros si los hubiera
+                cajas: cajasRaw,
                 campo: tr.querySelector('[data-campo="campo"]').innerText.trim(),
                 observacion: tr.querySelector('[data-campo="observacion"]').innerText.trim()
-            };
-            registrosInforme.push(dataFila);
+            });
 
-            // Sincronización Directa con Distribución Diaria
-            if (contenedor && contenedor !== "") {
-                await _supabase.from('distribucion_diaria').update({
-                    vapor: vapor,
-                    marca: marca,
-                    cajas: cajasNum,
-                    terminal: puerto
-                }).eq('contenedor', contenedor);
-            } else if (booking) {
-                // Si no hay contenedor todavía, intentamos actualizar por Booking
-                await _supabase.from('distribucion_diaria').update({
-                    vapor: vapor,
-                    marca: marca,
-                    cajas: cajasNum,
-                    terminal: puerto
-                }).eq('booking', booking);
+            // Sincronización con Planificación (distribucion_diaria)
+            // Solo si tenemos un ID de registro previo o un Contenedor
+            if (planId || contenedor) {
+                let p;
+                if (planId) {
+                    p = _supabase.from('distribucion_diaria').update({ vapor, marca, cajas: cajasNum, terminal: puerto, contenedor }).eq('id', planId);
+                } else {
+                    p = _supabase.from('distribucion_diaria').update({ vapor, marca, cajas: cajasNum, terminal: puerto }).eq('contenedor', contenedor);
+                }
+                promesasActualizacion.push(p);
             }
-        }
+        });
 
         try {
+            // 1. Upsert masivo en Informe Final (Rápido)
             const { error: errorInf } = await _supabase.from('informe_contenedores_final').upsert(registrosInforme, { onConflict: 'semana, booking, indice_fila' });
             if (errorInf) throw errorInf;
 
-            alert("¡Informe guardado y Cajas sincronizadas en Planificación!");
-            cargarInforme(); // Recargar para confirmar datos
+            // 2. Ejecutar actualizaciones en paralelo (Mucho más rápido)
+            await Promise.all(promesasActualizacion);
+
+            alert("¡Todo guardado con éxito!");
         } catch (err) {
             console.error(err);
-            alert("Error al guardar: " + err.message);
+            alert("Error al guardar cambios: " + err.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> GUARDAR CAMBIOS';
         }
     }
+
+    // El resto de funciones (Flechas, Excel) se mantienen igual...
+    document.getElementById('bodyInforme').addEventListener('keydown', function(e) {
+        const cell = e.target;
+        const row = cell.parentElement;
+        const rowIndex = Array.from(this.rows).indexOf(row);
+        const colIndex = cell.cellIndex;
+        if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) {
+            e.preventDefault();
+            if(e.key === "ArrowDown") this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
+            if(e.key === "ArrowUp")   this.rows[rowIndex - 1]?.cells[colIndex]?.focus();
+            if(e.key === "ArrowRight") cell.nextElementSibling?.focus();
+            if(e.key === "ArrowLeft")  cell.previousElementSibling?.focus();
+        }
+        if (e.key === "Enter") {
+            e.preventDefault();
+            this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
+        }
+    });
 
     function exportarExcel() {
         const table = document.getElementById("tablaInforme");
