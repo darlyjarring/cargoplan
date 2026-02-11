@@ -46,7 +46,7 @@
             </tr>
         </thead>
         <tbody id="bBody">
-            <tr><td colspan="25" class="text-center py-5 text-muted">Cargando distribución...</td></tr>
+            <tr><td colspan="26" class="text-center py-5 text-muted">Cargando distribución...</td></tr>
         </tbody>
     </table>
 </div>
@@ -60,9 +60,10 @@
     document.getElementById('txtDia').innerText = DIA.toUpperCase();
     document.getElementById('txtSem').innerText = SEMANA;
 
+    // --- COLUMNA "CAJAS" AGREGADA AQUÍ ---
     const columnas = [
         "EMPRESA", "PROVEEDOR", "DEPOSITO", "TERMINAL", "BUQUE", 
-        "BOOKING", "MARCA", "CODIGO", "PRODUCTOR", "FINCA", 
+        "BOOKING", "MARCA", "CAJAS", "CODIGO", "PRODUCTOR", "FINCA", 
         "CONTENEDOR", "SELLO_NAV", "SELLO_TCI", "SELLO_VENT", 
         "SELLO_STICKER", "SELLO_STICKER_NAV", "TERMOGRAFO", 
         "CHOFER", "CEDULA", "PLACA", "SUPERVISOR", "CONSOLIDACION"
@@ -71,7 +72,11 @@
     const hRow = document.getElementById('hRow');
     columnas.forEach(col => {
         let th = document.createElement('th');
-        th.style.width = (col === "PRODUCTOR" || col === "PROVEEDOR") ? "180px" : "130px";
+        // Ajuste de ancho para cajas
+        if(col === "CAJAS") th.style.width = "70px";
+        else if(col === "PRODUCTOR" || col === "PROVEEDOR") th.style.width = "180px";
+        else th.style.width = "130px";
+        
         th.innerText = col.replace(/_/g, " ");
         hRow.appendChild(th);
     });
@@ -94,7 +99,7 @@
                 document.getElementById('bBody').innerHTML = buffer;
                 asignarColoresPorBooking();
             } else {
-                document.getElementById('bBody').innerHTML = '<tr><td colspan="25" class="text-center py-5 text-muted">No hay datos en este día. Use "Agregar Fila".</td></tr>';
+                document.getElementById('bBody').innerHTML = '<tr><td colspan="26" class="text-center py-5 text-muted">No hay datos en este día. Use "Agregar Fila".</td></tr>';
             }
         } catch (err) { console.error(err); }
     }
@@ -110,14 +115,16 @@
         return fila;
     }
 
-    // --- MANEJO DE TECLADO (FLECHAS Y ENTER) ---
+    // --- EL RESTO DEL SCRIPT SE MANTIENE IGUAL (NAVEGACIÓN, ELIMINACIÓN Y GUARDADO) ---
+    // El sistema de guardado es dinámico, por lo que detectará automáticamente "cajas"
+    // al estar presente en el arreglo `columnas`.
+
     document.getElementById('bBody').addEventListener('keydown', function(e) {
         const cell = e.target;
         const row = cell.parentElement;
         const rowIndex = Array.from(this.rows).indexOf(row);
         const colIndex = cell.cellIndex;
 
-        // Navegación con Flechas
         if (["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight"].includes(e.key)) {
             e.preventDefault(); 
             if(e.key === "ArrowDown") this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
@@ -126,14 +133,12 @@
             if(e.key === "ArrowLeft")  cell.previousElementSibling?.focus();
         }
 
-        // Enter: Bajar a la siguiente fila
         if (e.key === "Enter") {
             e.preventDefault();
             this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
         }
     });
 
-    // --- MANEJO DE CLIC (SELECCIÓN Y TRIPLE CLIC) ---
     document.getElementById('bBody').addEventListener('dblclick', function(e) {
         if (e.target.tagName === 'TD') {
             const row = e.target.parentElement;
@@ -143,9 +148,9 @@
     });
 
     document.getElementById('bBody').addEventListener('click', function(e) {
-        if (e.detail === 3) { // Triple clic: Completar Booking
-            const bVal = e.target.parentElement.querySelector('[data-col="booking"]').innerText;
-            if(bVal) marcarBookingCompletado(bVal);
+        if (e.detail === 3) { 
+            const bCell = e.target.parentElement.querySelector('[data-col="booking"]');
+            if(bCell) marcarBookingCompletado(bCell.innerText);
         }
     });
 
@@ -175,7 +180,6 @@
 
     function agregarFila() {
         const tbody = document.getElementById('bBody');
-        // Si estaba el mensaje de "No hay datos", lo limpiamos
         if (tbody.rows.length === 1 && tbody.rows[0].cells.length === 1) tbody.innerHTML = "";
         
         const tr = document.createElement('tr');
@@ -211,12 +215,10 @@
                 obj[col] = val;
                 if(val !== "") hasData = true;
             });
-            // Solo guardamos si la fila tiene al menos un dato
             if(hasData) dataFinal.push(obj);
         });
 
         try {
-            // Borramos lo anterior de ese día y semana e insertamos lo nuevo
             const { error: delErr } = await _supabase.from('distribucion_diaria').delete().match({semana: SEMANA, dia: DIA});
             if (delErr) throw delErr;
 
