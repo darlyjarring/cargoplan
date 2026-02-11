@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestión de Sellos | Cargo Plan</title>
+    <title>Gestión Integral | Cargo Plan</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
-        /* Tipografía Arial y tamaños estandarizados */
         body { 
             background-color: #f4f7f9; 
             font-family: Arial, sans-serif;
@@ -21,20 +20,21 @@
             background: #1a237e;
             color: white;
             padding: 8px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        /* Buscador compacto */
         .search-box {
             background: white;
             border-radius: 4px;
             padding: 10px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin: 15px auto;
-            max-width: 400px;
+            max-width: 380px;
             border: 1px solid #ddd;
         }
 
-        /* Título del contenedor consultado */
         .container-header {
             background: #fff;
             border: 1px solid #2196f3;
@@ -50,26 +50,27 @@
         }
 
         .section-title {
-            background: #eeeeee;
-            padding: 4px 10px;
+            background: #e9ecef;
+            padding: 5px 10px;
             font-size: 11px;
             font-weight: bold;
-            color: #555;
+            color: #495057;
             text-transform: uppercase;
-            margin: 15px 0 10px 0;
-            border-radius: 2px;
+            margin: 15px 0 8px 0;
+            border-left: 4px solid #1a237e;
         }
 
         .data-label {
-            font-size: 11px;
+            font-size: 10px;
             color: #666;
             margin-bottom: 2px;
             display: block;
+            text-transform: uppercase;
+            font-weight: bold;
         }
 
-        /* Unificación de campos de texto */
         .info-static, .form-control-edit {
-            height: 32px; /* Altura fija para todos */
+            height: 30px;
             padding: 4px 8px;
             font-size: 12px;
             font-family: Arial, sans-serif;
@@ -77,18 +78,23 @@
             width: 100%;
             display: flex;
             align-items: center;
+            box-sizing: border-box;
         }
 
         .info-static {
-            background: #fdfdfd;
-            border: 1px solid #e0e0e0;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
             font-weight: bold;
-            color: #000;
+            color: #212529;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .form-control-edit {
-            border: 1px solid #ccc;
+            border: 1px solid #ced4da;
             outline: none;
+            background: #ffffff;
         }
 
         .form-control-edit:focus {
@@ -96,7 +102,6 @@
             box-shadow: 0 0 3px rgba(33,150,243,0.3);
         }
 
-        /* Colores sutiles para campos específicos */
         .sello-input { background-color: #fffde7 !important; border-color: #ffd600 !important; }
         .cajas-input { background-color: #e3f2fd !important; border-color: #90caf9 !important; font-weight: bold; text-align: center; }
 
@@ -104,12 +109,13 @@
             background: #2e7d32;
             color: white;
             border: none;
-            padding: 10px;
+            padding: 12px;
             width: 100%;
             font-weight: bold;
             border-radius: 4px;
-            margin-top: 20px;
+            margin-top: 25px;
             cursor: pointer;
+            font-size: 13px;
         }
 
         .btn-save:hover { background: #1b5e20; }
@@ -127,51 +133,56 @@
     <div class="spinner-border text-primary" role="status"></div>
 </div>
 
-<div class="navbar-custom text-center">
-    <span class="fw-bold">CONTROL DE SELLOS Y LOGÍSTICA</span>
+<div class="navbar-custom">
+    <span class="fw-bold"><i class="bi bi-truck me-2"></i>CARGO PLAN | OPERACIONES</span>
+    <span id="txtReloj" style="font-size: 11px;"></span>
 </div>
 
-<div class="container pb-4">
+<div class="container pb-5">
     
     <div class="search-box">
         <div class="input-group input-group-sm">
-            <span class="input-group-text bg-white border-end-0"><i class="bi bi-upc-scan"></i></span>
-            <input type="text" id="txtBusqueda" class="form-control border-start-0" placeholder="CONTENEDOR" oninput="this.value = this.value.toUpperCase()">
-            <button class="btn btn-primary" onclick="buscarContenedor()">CONSULTAR</button>
+            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+            <input type="text" id="txtBusqueda" class="form-control" placeholder="INGRESE CONTENEDOR" oninput="this.value = this.value.toUpperCase()">
+            <button class="btn btn-primary fw-bold" onclick="buscarContenedor()">CONSULTAR</button>
         </div>
     </div>
 
     <div id="panelPrincipal" style="display:none;" class="bg-white p-3 rounded shadow-sm border">
         
         <div class="container-header">
-            <i class="bi bi-check-circle-fill"></i> EXPORTACIÓN: <span id="lblContenedorActivo">---</span>
+            <i class="bi bi-box-seam-fill"></i> CONTENEDOR: <span id="lblContenedorActivo">---</span>
         </div>
 
-        <div class="section-title">Información de Guía</div>
-        <div class="row g-2 mb-2">
-            <div class="col-md-4"><label class="data-label">CONSIGNATARIO</label><div id="outCliente" class="info-static"></div></div>
-            <div class="col-md-3"><label class="data-label">N° DAE</label><div id="outDae" class="info-static text-danger"></div></div>
-            <div class="col-md-3"><label class="data-label">DESTINO</label><div id="outDestino" class="info-static"></div></div>
-            <div class="col-md-2"><label class="data-label">SEM</label><div id="outSemana" class="info-static text-center"></div></div>
+        <div class="section-title">Información de Guía y Empresa</div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-4"><label class="data-label">EMPRESA (EXPORTADORA)</label><div id="outEmpresa" class="info-static"></div></div>
+            <div class="col-md-4"><label class="data-label">CONSIGNATARIO (CLIENTE)</label><div id="outCliente" class="info-static"></div></div>
+            <div class="col-md-2"><label class="data-label">DESTINO</label><div id="outDestino" class="info-static"></div></div>
+            <div class="col-md-2"><label class="data-label">SEMANA</label><div id="outSemana" class="info-static text-center"></div></div>
         </div>
 
         <div class="section-title">Origen y Producción</div>
-        <div class="row g-2 mb-2">
+        <div class="row g-2 mb-3">
             <div class="col-md-4"><label class="data-label">PROVEEDOR</label><input type="text" id="inProveedor" class="form-control-edit"></div>
-            <div class="col-md-4"><label class="data-label">FINCA</label><input type="text" id="inFinca" class="form-control-edit"></div>
             <div class="col-md-4"><label class="data-label">PRODUCTOR</label><input type="text" id="inProductor" class="form-control-edit"></div>
-            <div class="col-md-2"><label class="data-label">COD. MAGAP</label><input type="text" id="inCodigo" class="form-control-edit"></div>
-            <div class="col-md-2"><label class="data-label">MARCA</label><input type="text" id="inMarca" class="form-control-edit"></div>
-            <div class="col-md-4"><label class="data-label">PATIO RETIRO</label><input type="text" id="inDeposito" class="form-control-edit"></div>
-            <div class="col-md-4"><label class="data-label">TERMINAL</label><input type="text" id="inTerminal" class="form-control-edit"></div>
+            <div class="col-md-4"><label class="data-label">FINCA</label><input type="text" id="inFinca" class="form-control-edit"></div>
+            
+            <div class="col-md-3"><label class="data-label">MARCA</label><input type="text" id="inMarca" class="form-control-edit"></div>
+            <div class="col-md-3"><label class="data-label">COD. MAGAP</label><input type="text" id="inCodigo" class="form-control-edit"></div>
+            <div class="col-md-3"><label class="data-label">DEPOSITO (RETIRO)</label><input type="text" id="inDeposito" class="form-control-edit"></div>
+            <div class="col-md-3"><label class="data-label">TERMINAL / PUERTO</label><input type="text" id="inTerminal" class="form-control-edit"></div>
         </div>
 
-        <div class="section-title">Logística (Cajas y Transporte)</div>
-        <div class="row g-2 mb-2">
-            <div class="col-md-2"><label class="data-label fw-bold text-primary">N° CAJAS</label><input type="number" id="inCajas" class="form-control-edit cajas-input" placeholder="0"></div>
-            <div class="col-md-4"><label class="data-label">CONDUCTOR</label><input type="text" id="inChofer" class="form-control-edit"></div>
-            <div class="col-md-3"><label class="data-label">CÉDULA</label><input type="text" id="inCedula" class="form-control-edit"></div>
+        <div class="section-title">Transporte y Detalle de Carga</div>
+        <div class="row g-2 mb-3">
+            <div class="col-md-2"><label class="data-label text-primary">CANT. CAJAS</label><input type="number" id="inCajas" class="form-control-edit cajas-input"></div>
+            <div class="col-md-4"><label class="data-label">NAVE (VAPOR/BUQUE)</label><input type="text" id="inVapor" class="form-control-edit"></div>
+            <div class="col-md-3"><label class="data-label">N° DAE</label><div id="outDae" class="info-static text-danger"></div></div>
             <div class="col-md-3"><label class="data-label">PLACA</label><input type="text" id="inPlaca" class="form-control-edit"></div>
+            
+            <div class="col-md-6"><label class="data-label">CONDUCTOR (CHOFER)</label><input type="text" id="inChofer" class="form-control-edit"></div>
+            <div class="col-md-6"><label class="data-label">CÉDULA CONDUCTOR</label><input type="text" id="inCedula" class="form-control-edit"></div>
         </div>
 
         <div class="section-title">Seguridad y Sellos</div>
@@ -181,13 +192,13 @@
             <div class="col-md-3"><label class="data-label">S. EXPORTADORA</label><input type="text" id="inExportadora" class="form-control-edit sello-input"></div>
             <div class="col-md-3"><label class="data-label">S. SEGURIDAD</label><input type="text" id="inSeguridad" class="form-control-edit sello-input"></div>
             <div class="col-md-3"><label class="data-label">ADHESIVO</label><input type="text" id="inAdhesivo" class="form-control-edit sello-input"></div>
-            <div class="col-md-3"><label class="data-label">TERMÓGRAFO</label><input type="text" id="inTermografo" class="form-control-edit sello-input"></div>
+            <div class="col-md-3"><label class="data-label">N° TERMÓGRAFO</label><input type="text" id="inTermografo" class="form-control-edit sello-input"></div>
             <div class="col-md-3"><label class="data-label">INSPECTOR</label><input type="text" id="inVerificador" class="form-control-edit sello-input"></div>
             <div class="col-md-3"><label class="data-label">FECHA CARGA</label><input type="date" id="inFecha" class="form-control-edit sello-input"></div>
         </div>
 
         <button class="btn-save" onclick="actualizarDatos()">
-            <i class="bi bi-cloud-check-fill me-2"></i> GUARDAR INFORMACIÓN
+            <i class="bi bi-save2 me-2"></i> GUARDAR TODOS LOS CAMBIOS
         </button>
 
     </div>
@@ -206,7 +217,8 @@
             const { data: plan } = await _supabase.from('distribucion_diaria').select('*').eq('contenedor', busqueda).maybeSingle();
             
             if(!plan) {
-                alert("Contenedor no registrado.");
+                alert("CONTENEDOR NO ENCONTRADO EN PLANIFICACIÓN.");
+                document.getElementById('loading').style.display = 'none';
                 return;
             }
             currentId = plan.id;
@@ -214,22 +226,29 @@
 
             const { data: cargo } = await _supabase.from('reporte_daes').select('*').eq('booking', plan.booking).maybeSingle();
 
-            document.getElementById('outCliente').innerText = (cargo ? cargo.empresa : '---');
-            document.getElementById('outDae').innerText = (cargo ? cargo.dae : '---');
+            // Mapeo de campos estáticos y dinámicos
+            document.getElementById('outEmpresa').innerText = (cargo ? cargo.empresa : '---');
+            document.getElementById('outCliente').innerText = (cargo ? cargo.consignatario || 'NO ASIGNADO' : '---');
             document.getElementById('outDestino').innerText = (cargo ? cargo.destino : '---');
             document.getElementById('outSemana').innerText = plan.semana || '---';
+            document.getElementById('outDae').innerText = (cargo ? cargo.dae : '---');
 
-            document.getElementById('inCajas').value = plan.cajas || '';
+            // Campos editables solicitados
             document.getElementById('inProveedor').value = plan.proveedor || '';
-            document.getElementById('inFinca').value = plan.finca || '';
             document.getElementById('inProductor').value = plan.productor || '';
-            document.getElementById('inCodigo').value = plan.codigo || '';
-            document.getElementById('inMarca').value = plan.marca || '';
+            document.getElementById('inFinca').value = plan.finca || '';
+            document.getElementById('inMarca').value = plan.marca || (cargo ? cargo.marca : '');
             document.getElementById('inDeposito').value = plan.deposito || '';
-            document.getElementById('inTerminal').value = plan.terminal || '';
+            document.getElementById('inTerminal').value = plan.terminal || (cargo ? cargo.terminal : '');
+            document.getElementById('inVapor').value = plan.vapor || (cargo ? cargo.barco : '');
+            
+            document.getElementById('inCajas').value = plan.cajas || '';
+            document.getElementById('inCodigo').value = plan.codigo || '';
             document.getElementById('inChofer').value = plan.chofer || '';
             document.getElementById('inCedula').value = plan.cedula || '';
             document.getElementById('inPlaca').value = plan.placa || '';
+            
+            // Sellos
             document.getElementById('inNaviera').value = plan.sello_naviera || '';
             document.getElementById('inTermo').value = plan.sello_termo || '';
             document.getElementById('inExportadora').value = plan.sello_exportadora || '';
@@ -243,6 +262,7 @@
 
         } catch (error) {
             console.error(error);
+            alert("ERROR AL CONSULTAR.");
         } finally {
             document.getElementById('loading').style.display = 'none';
         }
@@ -255,12 +275,13 @@
         const updateData = {
             cajas: document.getElementById('inCajas').value.trim(),
             proveedor: document.getElementById('inProveedor').value.trim(),
-            finca: document.getElementById('inFinca').value.trim(),
             productor: document.getElementById('inProductor').value.trim(),
-            codigo: document.getElementById('inCodigo').value.trim(),
+            finca: document.getElementById('inFinca').value.trim(),
             marca: document.getElementById('inMarca').value.trim(),
             deposito: document.getElementById('inDeposito').value.trim(),
             terminal: document.getElementById('inTerminal').value.trim(),
+            vapor: document.getElementById('inVapor').value.trim(),
+            codigo: document.getElementById('inCodigo').value.trim(),
             chofer: document.getElementById('inChofer').value.trim(),
             cedula: document.getElementById('inCedula').value.trim(),
             placa: document.getElementById('inPlaca').value.trim(),
@@ -277,13 +298,19 @@
         const { error } = await _supabase.from('distribucion_diaria').update(updateData).eq('id', currentId);
 
         if(!error) {
-            alert("Información Guardada.");
+            alert("DATOS ACTUALIZADOS CORRECTAMENTE.");
             location.reload();
         } else {
-            alert("Error al guardar.");
+            alert("ERROR AL GUARDAR CAMBIOS.");
             document.getElementById('loading').style.display = 'none';
         }
     }
+
+    // Reloj simple para la barra superior
+    setInterval(() => {
+        const now = new Date();
+        document.getElementById('txtReloj').innerText = now.toLocaleString();
+    }, 1000);
 
     document.getElementById('txtBusqueda').addEventListener('keypress', (e) => { if (e.key === 'Enter') buscarContenedor(); });
 </script>
