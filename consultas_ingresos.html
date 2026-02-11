@@ -24,7 +24,6 @@
             text-align: center;
         }
 
-        /* Buscador centrado y grande como al inicio */
         .search-box {
             background: white;
             border-radius: 4px;
@@ -90,9 +89,16 @@
             padding-left: 20px;
         }
 
-        /* Estilos de resaltado */
         .sello-input { background-color: #fffde7 !important; border-color: #ffd600 !important; }
-        .cajas-input { background-color: #e3f2fd !important; border-color: #0d6efd !important; font-weight: bold; height: 35px !important; font-size: 15px !important; text-align: center;}
+        .cajas-input { 
+            background-color: #e3f2fd !important; 
+            border-color: #0d6efd !important; 
+            font-weight: bold; 
+            height: 38px !important; 
+            font-size: 18px !important; 
+            text-align: center;
+            color: #0d6efd;
+        }
 
         .btn-save {
             background: #2e7d32;
@@ -129,30 +135,12 @@
         
         <div class="col-md-4">
             <div class="col-title">Disposición del Cliente</div>
-            <div class="mb-3">
-                <label class="data-label">Contenedor</label>
-                <div id="outContenedor" class="info-static"></div>
-            </div>
-            <div class="mb-3">
-                <label class="data-label">Booking</label>
-                <div id="outBooking" class="info-static"></div>
-            </div>
-            <div class="mb-3">
-                <label class="data-label">N° DAE</label>
-                <div id="outDae" class="info-static text-danger"></div>
-            </div>
-            <div class="mb-3">
-                <label class="data-label">Consignatario (Cliente)</label>
-                <div id="outCliente" class="info-static"></div>
-            </div>
-            <div class="mb-3">
-                <label class="data-label">Empresa</label>
-                <div id="outEmpresa" class="info-static"></div>
-            </div>
-            <div class="mb-3">
-                <label class="data-label">Destino</label>
-                <div id="outDestino" class="info-static"></div>
-            </div>
+            <div class="mb-3"><label class="data-label">Contenedor</label><div id="outContenedor" class="info-static"></div></div>
+            <div class="mb-3"><label class="data-label">Booking</label><div id="outBooking" class="info-static"></div></div>
+            <div class="mb-3"><label class="data-label">N° DAE</label><div id="outDae" class="info-static text-danger"></div></div>
+            <div class="mb-3"><label class="data-label">Consignatario (Cliente)</label><div id="outCliente" class="info-static"></div></div>
+            <div class="mb-3"><label class="data-label">Empresa</label><div id="outEmpresa" class="info-static"></div></div>
+            <div class="mb-3"><label class="data-label">Destino</label><div id="outDestino" class="info-static"></div></div>
         </div>
 
         <div class="col-md-4 vertical-divider">
@@ -161,37 +149,28 @@
                 <div class="col-8"><label class="data-label">Nave (Vapor/Buque)</label><input type="text" id="inVapor" class="form-control-edit"></div>
                 <div class="col-4"><label class="data-label">Código</label><input type="text" id="inCodigo" class="form-control-edit"></div>
             </div>
-            <div class="mb-3">
-                <label class="data-label">Chofer (Nombre Completo)</label>
-                <input type="text" id="inChofer" class="form-control-edit">
-            </div>
+            <div class="mb-3"><label class="data-label">Chofer</label><input type="text" id="inChofer" class="form-control-edit"></div>
             <div class="row g-2 mb-3">
                 <div class="col-7"><label class="data-label">Cédula</label><input type="text" id="inCedula" class="form-control-edit"></div>
                 <div class="col-5"><label class="data-label">Placa</label><input type="text" id="inPlaca" class="form-control-edit"></div>
             </div>
-            <div class="mb-3">
-                <label class="data-label">Proveedor</label>
-                <input type="text" id="inProveedor" class="form-control-edit">
-            </div>
-            <div class="mb-3">
-                <label class="data-label">Productor</label>
-                <input type="text" id="inProductor" class="form-control-edit">
-            </div>
+            <div class="mb-3"><label class="data-label">Proveedor</label><input type="text" id="inProveedor" class="form-control-edit"></div>
+            <div class="mb-3"><label class="data-label">Productor</label><input type="text" id="inProductor" class="form-control-edit"></div>
             <div class="row g-2 mb-3">
                 <div class="col-7"><label class="data-label">Finca</label><input type="text" id="inFinca" class="form-control-edit"></div>
                 <div class="col-5"><label class="data-label">Marca</label><input type="text" id="inMarca" class="form-control-edit"></div>
             </div>
             <div class="row g-2">
                 <div class="col-6"><label class="data-label">Depósito</label><input type="text" id="inDeposito" class="form-control-edit"></div>
-                <div class="col-6"><label class="data-label">Terminal / Puerto</label><input type="text" id="inTerminal" class="form-control-edit"></div>
+                <div class="col-6"><label class="data-label">Terminal</label><input type="text" id="inTerminal" class="form-control-edit"></div>
             </div>
         </div>
 
         <div class="col-md-4 vertical-divider">
-            <div class="col-title">Control de Sellos</div>
+            <div class="col-title">Control de Carga y Sellos</div>
             <div class="mb-3">
-                <label class="data-label text-primary">Cantidad de Cajas</label>
-                <input type="number" id="inCajas" class="form-control-edit cajas-input">
+                <label class="data-label text-primary">CANTIDAD DE CAJAS</label>
+                <input type="number" id="inCajas" class="form-control-edit cajas-input" step="1">
             </div>
             <div class="row g-2 mb-2">
                 <div class="col-6"><label class="data-label">S. Naviera</label><input type="text" id="inNaviera" class="form-control-edit sello-input"></div>
@@ -205,20 +184,13 @@
                 <div class="col-6"><label class="data-label">S. Seguridad</label><input type="text" id="inSeguridad" class="form-control-edit sello-input"></div>
                 <div class="col-6"><label class="data-label">Termógrafo</label><input type="text" id="inTermografo" class="form-control-edit sello-input"></div>
             </div>
-            <div class="mb-2">
-                <label class="data-label">Verificador / Inspector</label>
-                <input type="text" id="inVerificador" class="form-control-edit sello-input">
-            </div>
-            <div class="mb-2">
-                <label class="data-label">Fecha de Carga</label>
-                <input type="date" id="inFecha" class="form-control-edit">
-            </div>
+            <div class="mb-2"><label class="data-label">Verificador</label><input type="text" id="inVerificador" class="form-control-edit sello-input"></div>
+            <div class="mb-2"><label class="data-label">Fecha de Carga</label><input type="date" id="inFecha" class="form-control-edit"></div>
 
             <button class="btn-save" onclick="actualizarDatos()">
                 <i class="bi bi-cloud-check me-2"></i> GUARDAR TODO EL REGISTRO
             </button>
         </div>
-
     </div>
 </div>
 
@@ -231,13 +203,18 @@
         if(!busqueda) return;
 
         try {
-            const { data: plan } = await _supabase.from('distribucion_diaria').select('*').eq('contenedor', busqueda).maybeSingle();
+            const { data: plan, error: errorPlan } = await _supabase
+                .from('distribucion_diaria')
+                .select('*')
+                .eq('contenedor', busqueda)
+                .maybeSingle();
+
             if(!plan) { alert("¡CONTENEDOR NO PLANIFICADO!"); return; }
             
             currentId = plan.id;
             const { data: cargo } = await _supabase.from('reporte_daes').select('*').eq('booking', plan.booking).maybeSingle();
 
-            // Columna 1
+            // Llenado de campos fijos
             document.getElementById('outContenedor').innerText = plan.contenedor || '';
             document.getElementById('outBooking').innerText = plan.booking || '';
             document.getElementById('outDae').innerText = cargo ? cargo.dae : '---';
@@ -245,8 +222,8 @@
             document.getElementById('outEmpresa').innerText = cargo ? cargo.empresa : '---';
             document.getElementById('outDestino').innerText = cargo ? cargo.destino : '---';
 
-            // Columna 2
-            document.getElementById('inVapor').value = plan.vapor || (cargo ? cargo.barco : '');
+            // Llenado de campos editables
+            document.getElementById('inVapor').value = plan.vapor || '';
             document.getElementById('inCodigo').value = plan.codigo || '';
             document.getElementById('inChofer').value = plan.chofer || '';
             document.getElementById('inCedula').value = plan.cedula || '';
@@ -258,8 +235,11 @@
             document.getElementById('inDeposito').value = plan.deposito || '';
             document.getElementById('inTerminal').value = plan.terminal || '';
 
-            // Columna 3
-            document.getElementById('inCajas').value = plan.cajas || '';
+            // Llenado de CAJAS (Aseguramos que se muestre el valor)
+            const campoCajas = document.getElementById('inCajas');
+            campoCajas.value = plan.cajas !== null ? plan.cajas : ""; 
+
+            // Llenado de Sellos
             document.getElementById('inNaviera').value = plan.sello_naviera || '';
             document.getElementById('inVentolera').value = plan.sello_ventolera || '';
             document.getElementById('inAdhesivo').value = plan.sello_adhesivo || '';
@@ -275,6 +255,9 @@
 
     async function actualizarDatos() {
         if(!currentId) return;
+        
+        const valorCajas = document.getElementById('inCajas').value;
+        
         const upd = {
             vapor: document.getElementById('inVapor').value,
             codigo: document.getElementById('inCodigo').value,
@@ -287,7 +270,7 @@
             marca: document.getElementById('inMarca').value,
             deposito: document.getElementById('inDeposito').value,
             terminal: document.getElementById('inTerminal').value,
-            cajas: document.getElementById('inCajas').value,
+            cajas: valorCajas !== "" ? parseInt(valorCajas) : null, // Guardamos como número
             sello_naviera: document.getElementById('inNaviera').value,
             sello_ventolera: document.getElementById('inVentolera').value,
             sello_adhesivo: document.getElementById('inAdhesivo').value,
@@ -299,7 +282,12 @@
         };
 
         const { error } = await _supabase.from('distribucion_diaria').update(upd).eq('id', currentId);
-        if(!error) { alert("¡REGISTRO ACTUALIZADO CON ÉXITO!"); location.reload(); }
+        if(!error) { 
+            alert("¡REGISTRO ACTUALIZADO CON ÉXITO!"); 
+            location.reload(); 
+        } else {
+            alert("Error al guardar: " + error.message);
+        }
     }
 </script>
 </body>
