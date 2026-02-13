@@ -2,224 +2,198 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>COMERSUR | Excel 365 Cargo Plan</title>
+    <title>COMERSUR | Cargo Plan Office 365</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root { --excel-border: #d1d1d1; --excel-selected: #107c41; --header-bg: #f3f2f1; --yellow-header: #fff2cc; --green-header: #e2efda; }
-        body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+        body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .excel-toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px 15px; display: flex; align-items: center; gap: 10px; }
-        .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
-        table { border-collapse: collapse; table-layout: fixed; width: max-content; background: white; }
-        /* Medidas exactas */
-        .col-A { width: 35px; } .col-B { width: 130px; } .col-C { width: 85px; } .col-D { width: 230px; } .col-E { width: 145px; } .col-F { width: 135px; }
-        .col-G { width: 110px; } .col-H { width: 140px; } .col-I { width: 105px; } .col-J { width: 110px; } .col-K { width: 135px; } .col-L { width: 205px; }
-        .col-M { width: 125px; } .col-N { width: 120px; } .col-O { width: 95px; } .col-P { width: 370px; } .col-Q { width: 190px; } .col-R { width: 115px; }
-        tr.h-15 { height: 21px; } tr.h-63 { height: 84px; } tr.h-84 { height: 112px; } tr.h-19 { height: 26px; }
-        td { border: 0.5px solid var(--excel-border); padding: 0 4px; font-size: 11px; outline: none; white-space: nowrap; overflow: hidden; vertical-align: middle; }
-        td:focus { border: 2px solid var(--excel-selected) !important; background-color: #fff; z-index: 5; }
-        .row-label { background: var(--header-bg); text-align: center; color: #666; font-size: 10px; width: 30px; }
-        .col-label { background: var(--header-bg); text-align: center; color: #666; font-size: 11px; height: 20px; }
-        .header-9 { font-weight: bold; text-align: center; border-bottom: 2px solid #000 !important; }
-        .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; overflow-x: auto; }
-        .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; }
+        .excel-viewport { flex: 1; overflow: auto; background: white; }
+        table { border-collapse: collapse; table-layout: fixed; width: max-content; }
+        
+        /* Definición de columnas según tu imagen */
+        .col-A { width: 35px; } .col-B { width: 135px; } .col-C { width: 90px; } .col-D { width: 220px; } 
+        .col-E { width: 140px; } .col-F { width: 130px; } .col-G { width: 110px; } .col-H { width: 130px; }
+        .col-I { width: 100px; } .col-J { width: 110px; } .col-K { width: 130px; } .col-L { width: 150px; }
+        .col-M { width: 120px; } .col-N { width: 120px; } .col-O { width: 100px; } .col-P { width: 250px; }
+        .col-Q { width: 180px; } .col-R { width: 110px; }
+
+        td { border: 0.5px solid var(--excel-border); padding: 0 5px; font-size: 11px; outline: none; white-space: nowrap; vertical-align: middle; height: 24px; }
+        /* Efecto de selección de celda Office 365 */
+        td:focus { border: 2px solid var(--excel-selected) !important; background: #fff; z-index: 10; position: relative; }
+        
+        .row-label { background: var(--header-bg); text-align: center; color: #666; width: 30px; border: 0.5px solid #c0c0c0; pointer-events: none; }
+        .col-label { background: var(--header-bg); text-align: center; color: #666; height: 20px; pointer-events: none; }
+        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; }
+        
+        .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; }
+        .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; border-bottom: 1px solid var(--excel-border); }
         .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="excel-toolbar">
-    <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana (ej: 7)">
-    <button onclick="cargarBuques()" class="btn btn-sm btn-primary">Cargar Naves</button>
-    
-    <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()">
-        <option value="">2. Seleccionar Nave</option>
-    </select>
-    <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="cargarDatosFinales()">
-        <option value="">3. Seleccionar Puerto</option>
-    </select>
-    <span id="msg" class="small text-danger"></span>
+    <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana">
+    <button onclick="buscarDatos()" class="btn btn-sm btn-success">Cargar</button>
+    <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()"><option>Nave</option></select>
+    <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="generarTodo()"><option>Puerto</option></select>
 </div>
 
 <div class="excel-viewport">
     <table id="excel-table">
-        <thead id="head-letters"></thead>
+        <thead><tr id="head-letters" class="col-label"></tr></thead>
         <tbody id="grid-body"></tbody>
     </table>
 </div>
 
-<div class="tabs-footer" id="tabs-bar">
-    <div class="tab-item active" onclick="mostrarMaster()">MASTER</div>
-</div>
+<div class="tabs-footer" id="tabs-bar"><div class="tab-item active">MASTER</div></div>
 
 <script>
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
-    let globalData = [];
+    let fullData = [];
 
     function init() {
         const head = document.getElementById('head-letters');
         const body = document.getElementById('grid-body');
-        let hRow = `<tr class="col-label"><td></td>`;
-        cols.forEach(c => hRow += `<td class="col-${c}">${c}</td>`);
-        head.innerHTML = hRow + `</tr>`;
+        head.innerHTML = `<td></td>` + cols.map(c => `<td class="col-${c}">${c}</td>`).join('');
 
-        for (let i = 1; i <= 100; i++) {
+        for (let i = 1; i <= 60; i++) {
             const tr = document.createElement('tr');
-            if (i <= 4) tr.className = 'h-15';
-            else if (i === 5) tr.className = 'h-63';
-            else if (i === 6) tr.className = 'h-84';
-            else tr.className = 'h-19';
-
-            let rHtml = `<td class="row-label">${i}</td>`;
-            cols.forEach(c => rHtml += `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`);
-            tr.innerHTML = rHtml;
+            tr.innerHTML = `<td class="row-label">${i}</td>` + 
+                cols.map(c => `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`).join('');
             body.appendChild(tr);
         }
-        dibujarEsqueleto();
+        dibujarDiseno();
+        setupNavigation();
     }
 
-    function dibujarEsqueleto() {
-        setCelda(5, 'B', 'VESSEL:', true);
-        setCelda(5, 'H', 'WEEK:', true);
-        setCelda(5, 'K', 'TYPE OF BOX:', true);
-        setCelda(6, 'B', 'PORT:', true);
-        setCelda(7, 'K', 'COMMODITY:', true);
-        setCelda(8, 'K', 'DESTINATION:', true);
+    // LÓGICA DE NAVEGACIÓN OFFICE 365
+    function setupNavigation() {
+        document.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            if (active.tagName !== 'TD') return;
+
+            let row = parseInt(active.dataset.row);
+            let colIdx = cols.indexOf(active.dataset.col);
+
+            switch (e.key) {
+                case 'ArrowRight': case 'Tab':
+                    e.preventDefault();
+                    if (colIdx < cols.length - 1) focusCell(row, cols[colIdx + 1]);
+                    break;
+                case 'ArrowLeft':
+                    e.preventDefault();
+                    if (colIdx > 0) focusCell(row, cols[colIdx - 1]);
+                    break;
+                case 'ArrowDown': case 'Enter':
+                    e.preventDefault();
+                    if (row < 60) focusCell(row + 1, cols[colIdx]);
+                    break;
+                case 'ArrowUp':
+                    e.preventDefault();
+                    if (row > 1) focusCell(row - 1, cols[colIdx]);
+                    break;
+            }
+        });
+    }
+
+    function focusCell(r, c) {
+        const el = document.getElementById(`cell-${r}-${c}`);
+        if (el) el.focus();
+    }
+
+    function dibujarDiseno() {
+        setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'H', 'WEEK:', true); setCelda(5, 'K', 'TYPE OF BOX:', true);
+        setCelda(6, 'B', 'PORT:', true); setCelda(7, 'K', 'COMMODITY:', true); setCelda(8, 'K', 'DESTINATION:', true);
 
         const h9 = [
-            {c:'A', t:'N°'}, {c:'B', t:'Container Number', b:'var(--yellow-header)'},
-            {c:'C', t:'Amount Of Boxes', b:'var(--yellow-header)'}, {c:'D', t:'Dae', b:'var(--yellow-header)'},
-            {c:'E', t:'Booking', b:'var(--yellow-header)'}, {c:'F', t:'Main Bottle Seal', b:'var(--yellow-header)'},
-            {c:'G', t:'Vent Seals', b:'var(--yellow-header)'}, {c:'H', t:'Sticker Seal', b:'var(--yellow-header)'},
-            {c:'I', t:'TCI Seal', b:'var(--green-header)'}, {c:'J', t:'Security Seal', b:'var(--green-header)'},
-            {c:'K', t:'Thermograph', b:'var(--green-header)'}, {c:'L', t:'Brand'},
-            {c:'M', t:'Observations'}, {c:'N', t:'Consolidation Date'}
+            {c:'A', t:'N°'}, {c:'B', t:'Container Number'}, {c:'C', t:'Amount Of Boxes'}, {c:'D', t:'Dae'},
+            {c:'E', t:'Booking'}, {c:'F', t:'Main Bottle Seal'}, {c:'G', t:'Vent Seals'}, {c:'H', t:'Sticker Seal'},
+            {c:'I', t:'TCI Seal'}, {c:'J', t:'Security Seal'}, {c:'K', t:'Thermograph'}, {c:'L', t:'Brand'},
+            {c:'M', t:'Observations'}, {c:'N', t:'Consolidation Date'}, {c:'O', t:'Producer Codes'},
+            {c:'P', t:'Producers'}, {c:'Q', t:'Farm'}, {c:'R', t:'Inspection'}
         ];
         h9.forEach(h => {
             const el = document.getElementById(`cell-9-${h.c}`);
-            if(el) { el.innerText = h.t; el.className = 'header-9'; if(h.b) el.style.backgroundColor = h.b; }
+            if (el) { el.innerText = h.t; el.className = 'header-9'; }
         });
     }
 
-    async function cargarBuques() {
+    async function buscarDatos() {
         const sem = document.getElementById('txtSemana').value;
-        if(!sem) return;
-        const selB = document.getElementById('selBuque');
-        
-        // Consulta simple para evitar el error 400
-        const { data, error } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
-        
-        if(error || !data.length) {
-            document.getElementById('msg').innerText = "No hay datos para esta semana.";
-            return;
-        }
-
-        const unicos = [...new Set(data.map(i => i.vapor || i.barco || i.nave))].filter(Boolean);
-        selB.innerHTML = '<option value="">2. Seleccionar Nave</option>';
-        unicos.forEach(b => selB.innerHTML += `<option value="${b}">${b}</option>`);
-        selB.disabled = false;
-        document.getElementById('msg').innerText = "";
-    }
-
-    async function cargarPuertos() {
-        const sem = document.getElementById('txtSemana').value;
-        const buq = document.getElementById('selBuque').value;
-        const selP = document.getElementById('selPuerto');
-
         const { data } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
-        const filtrado = data.filter(i => (i.vapor || i.barco || i.nave) === buq);
-        
-        const unicos = [...new Set(filtrado.map(i => i.puerto || i.terminal))].filter(Boolean);
-        selP.innerHTML = '<option value="">3. Seleccionar Puerto</option>';
-        unicos.forEach(p => selP.innerHTML += `<option value="${p}">${p}</option>`);
-        selP.disabled = false;
+        fullData = data || [];
+        const buques = [...new Set(fullData.map(d => d.vapor || d.barco || d.nave))].filter(Boolean);
+        const sel = document.getElementById('selBuque');
+        sel.innerHTML = '<option>Seleccionar Nave...</option>' + buques.map(b => `<option value="${b}">${b}</option>`).join('');
+        sel.disabled = false;
     }
 
-    async function cargarDatosFinales() {
-        const sem = document.getElementById('txtSemana').value;
+    function cargarPuertos() {
+        const buq = document.getElementById('selBuque').value;
+        const puertos = [...new Set(fullData.filter(d => (d.vapor||d.barco||d.nave) === buq).map(d => d.puerto || d.terminal))].filter(Boolean);
+        const sel = document.getElementById('selPuerto');
+        sel.innerHTML = '<option>Seleccionar Puerto...</option>' + puertos.map(p => `<option value="${p}">${p}</option>`).join('');
+        sel.disabled = false;
+    }
+
+    function generarTodo() {
         const buq = document.getElementById('selBuque').value;
         const pto = document.getElementById('selPuerto').value;
-
-        const { data } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
-        globalData = data.filter(i => (i.vapor || i.barco || i.nave) === buq && (i.puerto || i.terminal) === pto);
-
-        if(globalData.length > 0) {
-            mostrarMaster();
-            generarTabs(globalData);
-        }
+        const filtrado = fullData.filter(d => (d.vapor||d.barco||d.nave) === buq && (d.puerto||d.terminal) === pto);
+        
+        limpiarYTabular(filtrado);
+        crearTabs(filtrado);
     }
 
-    function mostrarMaster() {
-        limpiarTabla();
-        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-        document.querySelector('.tab-item').classList.add('active');
-        
-        const d = globalData[0];
+    function limpiarYTabular(datos) {
+        for(let r=10; r<=60; r++) cols.forEach(c => setCelda(r, c, ''));
+        if(!datos.length) return;
+
         setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'I', document.getElementById('txtSemana').value);
-        setCelda(5, 'L', d.cliente);
         setCelda(6, 'C', document.getElementById('selPuerto').value);
-        setCelda(7, 'L', 'BANANAS');
-        setCelda(8, 'L', d.destino);
 
-        rellenarGrid(globalData);
-    }
-
-    function rellenarGrid(filas) {
-        filas.forEach((reg, i) => {
+        datos.forEach((reg, i) => {
             const r = 10 + i;
-            setCelda(r, 'A', i+1);
-            setCelda(r, 'B', reg.contenedor);
-            setCelda(r, 'C', reg.cajas);
-            setCelda(r, 'D', reg.dae);
-            setCelda(r, 'E', reg.booking);
-            // Mapeos según memoria del sistema
-            setCelda(r, 'F', reg.sello_nav);
-            setCelda(r, 'G', reg.sello_vent);
-            setCelda(r, 'H', reg.sello_sticker);
-            setCelda(r, 'I', reg.sello_tci);
-            setCelda(r, 'J', reg.sello_sticker_nav);
-            setCelda(r, 'K', reg.termografo);
-            setCelda(r, 'L', reg.marca);
-            setCelda(r, 'N', reg.fecha);
+            setCelda(r, 'A', i + 1); setCelda(r, 'B', reg.contenedor); setCelda(r, 'C', reg.cajas);
+            setCelda(r, 'D', reg.dae); setCelda(r, 'E', reg.booking);
+            // Conexiones de base de datos personalizadas
+            setCelda(r, 'F', reg.sello_nav); setCelda(r, 'G', reg.sello_vent);
+            setCelda(r, 'H', reg.sello_sticker); setCelda(r, 'I', reg.sello_tci);
+            setCelda(r, 'J', reg.sello_sticker_nav); setCelda(r, 'K', reg.termografo);
+            setCelda(r, 'L', reg.marca); setCelda(r, 'N', reg.fecha);
+            setCelda(r, 'P', reg.productor);
         });
     }
 
-    function generarTabs(data) {
+    function crearTabs(datos) {
         const bar = document.getElementById('tabs-bar');
-        bar.innerHTML = '<div class="tab-item active" onclick="mostrarMaster()">MASTER</div>';
-        
+        bar.innerHTML = '<div class="tab-item active" onclick="generarTodo()">MASTER</div>';
         const grupos = {};
-        data.forEach(r => {
-            const key = `${r.destino || 'SD'} - ${r.marca || 'SM'}`;
-            if(!grupos[key]) grupos[key] = [];
-            grupos[key].push(r);
+        datos.forEach(r => {
+            const k = `${r.destino} - ${r.marca}`;
+            if(!grupos[k]) grupos[k] = [];
+            grupos[k].push(r);
         });
-
-        Object.keys(grupos).forEach(key => {
+        Object.keys(grupos).forEach(k => {
             const div = document.createElement('div');
-            div.className = 'tab-item';
-            div.innerText = key;
+            div.className = 'tab-item'; div.innerText = k;
             div.onclick = () => {
                 document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
                 div.classList.add('active');
-                limpiarTabla();
-                rellenarGrid(grupos[key]);
+                limpiarYTabular(grupos[k]);
             };
             bar.appendChild(div);
         });
     }
 
-    function limpiarTabla() {
-        for(let r=10; r<=100; r++) {
-            cols.forEach(c => { const el = document.getElementById(`cell-${r}-${c}`); if(el) el.innerText = ''; });
-        }
-    }
-
-    function setCelda(r, c, txt, bold=false) {
+    function setCelda(r, c, txt, b=false) {
         const el = document.getElementById(`cell-${r}-${c}`);
-        if(el) { el.innerText = txt || ''; if(bold) el.style.fontWeight = 'bold'; }
+        if(el) { el.innerText = txt || ''; el.style.fontWeight = b ? 'bold' : 'normal'; }
     }
 
     window.onload = init;
