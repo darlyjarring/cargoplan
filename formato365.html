@@ -2,29 +2,29 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>COMERSUR - Cargo Plan Pro</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>COMERSUR | Excel 365 Cargo Plan</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --excel-border: #e1e1e1;
+            --excel-border: #d1d1d1;
             --excel-selected: #107c41;
-            --header-bg: #f8f9fa;
+            --header-bg: #f3f2f1;
+            --yellow-header: #fff2cc;
+            --green-header: #e2efda;
         }
-        body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+        body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
 
-        /* Contenedor de medidas exactas */
-        .excel-container { 
-            height: calc(100vh - 110px); 
-            overflow: auto; 
-            background: white; 
-            position: relative;
-            margin-top: 5px;
-        }
+        /* Barra de Herramientas superior */
+        .excel-toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px 15px; display: flex; align-items: center; gap: 15px; }
 
-        table { border-collapse: collapse; table-layout: fixed; width: max-content; }
+        /* Contenedor de la Grilla */
+        .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
         
-        /* Definición de Columnas (convertido de mm a px) */
+        table { border-collapse: collapse; table-layout: fixed; width: max-content; background: white; }
+        
+        /* Medidas de Columnas exactas (mm a px) */
         .col-A { width: 20px; }   .col-B { width: 66px; }   .col-C { width: 42px; }
         .col-D { width: 115px; }  .col-E { width: 74px; }   .col-F { width: 67px; }
         .col-G { width: 55px; }   .col-H { width: 70px; }   .col-I { width: 53px; }
@@ -32,163 +32,220 @@
         .col-M { width: 62px; }   .col-N { width: 60px; }   .col-O { width: 47px; }
         .col-P { width: 185px; }  .col-Q { width: 95px; }   .col-R { width: 58px; }
 
-        /* Altura de Filas */
-        tr.h-15 { height: 59px; } /* 15.75mm */
-        tr.h-63 { height: 238px; } /* 63mm - Área Logo */
-        tr.h-84 { height: 317px; } /* 84mm - Área Firmas/Resumen */
-        tr.h-19 { height: 74px; }  /* 19.5mm - Datos */
+        /* Altura de Filas exactas */
+        tr.h-15 { height: 21px; }  /* 15.75mm aprox */
+        tr.h-63 { height: 84px; }  /* 63mm */
+        tr.h-84 { height: 112px; } /* 84mm */
+        tr.h-19 { height: 26px; }  /* 19.5mm */
 
         td { 
             border: 0.5px solid var(--excel-border); 
-            padding: 2px 5px; 
+            padding: 0 4px; 
             font-size: 11px; 
             outline: none;
             white-space: nowrap;
             overflow: hidden;
-            position: relative;
+            vertical-align: middle;
         }
 
-        /* Comportamiento Excel */
-        td:focus { 
-            border: 2px solid var(--excel-selected) !important; 
-            z-index: 10; 
-        }
+        /* Comportamiento de Celda Activa */
+        td:focus { border: 2px solid var(--excel-selected) !important; background-color: #fff; z-index: 5; }
 
-        .excel-header { background: var(--header-bg); text-align: center; font-weight: bold; color: #444; border: 1px solid #ccc; }
+        .row-label { background: var(--header-bg); text-align: center; color: #666; font-size: 10px; border: 0.5px solid var(--excel-border); width: 30px; }
+        .col-label { background: var(--header-bg); text-align: center; color: #666; font-size: 11px; height: 20px; }
 
-        /* Logo Flotante */
-        #logo-container {
-            position: absolute;
-            top: 10px;
-            left: 25px;
-            z-index: 1000;
-            cursor: move;
-        }
+        /* Estilos de Cabecera Imagen */
+        .param-label { font-weight: bold; font-size: 12px; }
+        .header-9 { font-weight: bold; text-align: center; border-bottom: 2px solid #000 !important; }
 
-        .tabs-bar { 
-            height: 35px; 
-            background: #f3f2f1; 
-            border-top: 1px solid #ccc; 
-            display: flex; 
-            align-items: center; 
-            padding-left: 20px;
+        /* Logo Montado */
+        #logo-container { position: absolute; top: 15px; left: 35px; z-index: 10; pointer-events: none; }
+
+        /* Tabs Inferiores */
+        .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; padding-left: 10px; }
+        .tab-item { 
+            padding: 5px 15px; background: white; border: 1px solid var(--excel-border); 
+            border-top: none; font-size: 12px; cursor: pointer; display: flex; align-items: center;
         }
-        .tab { 
-            padding: 5px 20px; 
-            background: white; 
-            border: 1px solid #ccc; 
-            border-bottom: none;
-            font-size: 12px; 
-            cursor: pointer;
-            margin-right: 2px;
-        }
-        .tab.active { border-bottom: 3px solid var(--excel-selected); font-weight: bold; }
+        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="p-2 bg-white border-bottom d-flex align-items-center justify-content-between">
-    <div class="d-flex align-items-center">
-        <img src="https://img.icons8.com/color/48/000000/microsoft-excel-2019.png" width="24" class="me-2">
-        <span class="fw-bold">Cargo Plan - COMERSUR Cia. Ltda.</span>
-    </div>
-    <div id="status" class="badge bg-success">Online</div>
+<div class="excel-toolbar">
+    <img src="https://img.icons8.com/color/48/microsoft-excel-2019.png" width="24">
+    <span class="fw-bold text-secondary">Cargo Plan Master</span>
+    <div class="vr mx-2"></div>
+    <select id="selSemana" class="form-select form-select-sm w-auto" onchange="cargarSemana()">
+        <option value="">Seleccionar Semana</option>
+        <option value="07">Semana 07</option>
+        <option value="08">Semana 08</option>
+    </select>
+    <button class="btn btn-sm btn-outline-success" onclick="guardarCambios()">Guardar</button>
 </div>
 
-<div class="excel-container" id="scroll-area">
+<div class="excel-viewport">
     <div id="logo-container">
-        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Placeholder_logo.svg" id="main-logo" width="220">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Placeholder_logo.svg" id="img-logo" width="250" style="filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.1));">
     </div>
 
     <table id="excel-table">
-        <thead id="table-head">
-            </thead>
-        <tbody id="table-body">
-            </tbody>
+        <thead id="head-letters"></thead>
+        <tbody id="grid-body"></tbody>
     </table>
 </div>
 
-<div class="tabs-bar" id="tabs-container">
-    <div class="tab active">MASTER</div>
+<div class="tabs-footer" id="tabs-bar">
+    <div class="tab-item active" onclick="cambiarHoja('MASTER')">MASTER</div>
 </div>
 
 <script>
-    // Configuración de medidas y columnas
-    const columns = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
-    
-    function initExcel() {
-        const head = document.getElementById('table-head');
-        const body = document.getElementById('table-body');
-        
-        // 1. Crear Cabeceras Letras
-        let headRow = `<tr class="excel-header"><td style="width:30px"></td>`;
-        columns.forEach(c => headRow += `<td class="col-${c}">${c}</td>`);
-        head.innerHTML = headRow + `</tr>`;
+    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+    const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
 
-        // 2. Generar Filas con alturas específicas
+    function initStructure() {
+        const head = document.getElementById('head-letters');
+        const body = document.getElementById('grid-body');
+
+        // 1. Cabecera Letras A-R
+        let hRow = `<tr class="col-label"><td></td>`;
+        cols.forEach(c => hRow += `<td class="col-${c}">${c}</td>`);
+        head.innerHTML = hRow + `</tr>`;
+
+        // 2. Generar 100 filas
         for (let i = 1; i <= 100; i++) {
             const tr = document.createElement('tr');
-            
-            // Asignar clases de altura según pedido
             if (i <= 4) tr.className = 'h-15';
-            else if (i === 5) tr.className = 'h-63'; // Fila logo/títulos
-            else if (i === 6) tr.className = 'h-84'; // Fila firmas
+            else if (i === 5) tr.className = 'h-63';
+            else if (i === 6) tr.className = 'h-84';
             else tr.className = 'h-19';
 
-            let rowHtml = `<td class="excel-header">${i}</td>`;
-            columns.forEach(col => {
-                rowHtml += `<td contenteditable="true" data-row="${i}" data-col="${col}" tabindex="0"></td>`;
+            let rHtml = `<td class="row-label">${i}</td>`;
+            cols.forEach(c => {
+                rHtml += `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`;
             });
-            tr.innerHTML = rowHtml;
+            tr.innerHTML = rHtml;
             body.appendChild(tr);
         }
         
-        setupNavigation();
+        dibujarParametrosFijos();
+        configurarTeclado();
     }
 
-    // Lógica de navegación tipo Excel
-    function setupNavigation() {
+    function dibujarParametrosFijos() {
+        // Labels Fila 5
+        setCelda(5, 'B', 'VESSEL:', true);
+        setCelda(5, 'H', 'WEEK:', true);
+        setCelda(5, 'K', 'TYPE OF BOX:', true);
+        
+        // Labels Fila 6
+        setCelda(6, 'B', 'PORT:', true);
+        setCelda(7, 'K', 'COMMODITY:', true);
+        setCelda(8, 'K', 'DESTINATION:', true);
+
+        // Cabecera Fila 9 - Nombres y Colores
+        const h9 = [
+            {c:'A', t:'N°', b:''}, {c:'B', t:'Container Number', b:'var(--yellow-header)'},
+            {c:'C', t:'Amount Of Boxes', b:'var(--yellow-header)'}, {c:'D', t:'Dae', b:'var(--yellow-header)'},
+            {c:'E', t:'Booking', b:'var(--yellow-header)'}, {c:'F', t:'Main Bottle Seal', b:'var(--yellow-header)'},
+            {c:'G', t:'Vent Seals', b:'var(--yellow-header)'}, {c:'H', t:'Sticker Seal', b:'var(--yellow-header)'},
+            {c:'I', t:'TCI Seal', b:'var(--green-header)'}, {c:'J', t:'Security Seal', b:'var(--green-header)'},
+            {c:'K', t:'Thermograph', b:'var(--green-header)'}, {c:'L', t:'Brand', b:''},
+            {c:'M', t:'Observations', b:''}, {c:'P', t:'Producers', b:''}
+        ];
+        
+        h9.forEach(item => {
+            const el = document.getElementById(`cell-9-${item.c}`);
+            el.innerText = item.t;
+            el.style.backgroundColor = item.b;
+            el.className = 'header-9';
+        });
+    }
+
+    function setCelda(r, c, txt, bold=false) {
+        const el = document.getElementById(`cell-${r}-${c}`);
+        if(el) {
+            el.innerText = txt;
+            if(bold) el.style.fontWeight = 'bold';
+        }
+    }
+
+    async function cargarSemana() {
+        const sem = document.getElementById('selSemana').value;
+        if(!sem) return;
+
+        const { data, error } = await _supabase
+            .from('distribucion_diaria')
+            .select('*')
+            .eq('semana', sem);
+
+        if(data) {
+            // Llenar datos de cabecera
+            setCelda(5, 'C', data[0]?.vapor || '');
+            setCelda(5, 'I', sem);
+            setCelda(6, 'C', 'GUAYAQUIL - NAPORTEC');
+            
+            // Llenar Tabla (desde fila 10)
+            data.forEach((reg, idx) => {
+                const r = 10 + idx;
+                setCelda(r, 'A', idx + 1);
+                setCelda(r, 'B', reg.contenedor);
+                setCelda(r, 'C', reg.cajas);
+                setCelda(r, 'E', reg.booking);
+                setCelda(r, 'F', reg.sello_nav);
+                setCelda(r, 'G', reg.sello_vent);
+                setCelda(r, 'H', reg.sello_sticker);
+                setCelda(r, 'I', reg.sello_tci);
+                setCelda(r, 'J', reg.sello_sticker_nav);
+                setCelda(r, 'K', reg.termografo);
+                setCelda(r, 'L', reg.marca);
+            });
+            
+            generarHojas(data);
+        }
+    }
+
+    function generarHojas(data) {
+        const bar = document.getElementById('tabs-bar');
+        bar.innerHTML = '<div class="tab-item active" onclick="cambiarHoja(\'MASTER\')">MASTER</div>';
+        
+        const sets = new Set();
+        data.forEach(r => { if(r.destino && r.marca) sets.add(`${r.destino} - ${r.marca}`); });
+        
+        sets.forEach(name => {
+            const div = document.createElement('div');
+            div.className = 'tab-item';
+            div.innerText = name.split('-')[0].trim(); // Nombre corto
+            div.onclick = () => {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                div.classList.add('active');
+            };
+            bar.appendChild(div);
+        });
+    }
+
+    function configurarTeclado() {
         document.addEventListener('keydown', (e) => {
-            const active = document.activeElement;
-            if (active.tagName !== 'TD') return;
+            const act = document.activeElement;
+            if(act.tagName !== 'TD') return;
+            
+            const r = parseInt(act.dataset.row);
+            const cIdx = cols.indexOf(act.dataset.col);
 
-            const row = parseInt(active.dataset.row);
-            const colIdx = columns.indexOf(active.dataset.col);
-
-            let next;
-            switch(e.key) {
-                case 'ArrowRight': next = document.querySelector(`[data-row="${row}"][data-col="${columns[colIdx+1]}"]`); break;
-                case 'ArrowLeft': next = document.querySelector(`[data-row="${row}"][data-col="${columns[colIdx-1]}"]`); break;
-                case 'ArrowDown': next = document.querySelector(`[data-row="${row+1}"][data-col="${columns[colIdx]}"]`); break;
-                case 'ArrowUp': next = document.querySelector(`[data-row="${row-1}"][data-col="${columns[colIdx]}"]`); break;
-                case 'Enter': 
-                    e.preventDefault();
-                    next = document.querySelector(`[data-row="${row+1}"][data-col="${columns[colIdx]}"]`);
-                    break;
-            }
-
-            if (next) next.focus();
-        });
-
-        // Lógica Doble Enter para salir (Blur)
-        let lastEnter = 0;
-        document.addEventListener('keypress', (e) => {
-            if(e.key === 'Enter') {
-                let now = Date.now();
-                if(now - lastEnter < 300) document.activeElement.blur();
-                lastEnter = now;
-            }
+            if(e.key === 'ArrowRight' && cIdx < cols.length-1) mover(r, cols[cIdx+1]);
+            if(e.key === 'ArrowLeft' && cIdx > 0) mover(r, cols[cIdx-1]);
+            if(e.key === 'ArrowDown') mover(r+1, cols[cIdx]);
+            if(e.key === 'ArrowUp' && r > 1) mover(r-1, cols[cIdx]);
+            if(e.key === 'Enter') { e.preventDefault(); mover(r+1, cols[cIdx]); }
         });
     }
 
-    // Función para posicionar el logo según parámetro (mm)
-    function posicionarLogo(topMm, leftMm) {
-        const logo = document.getElementById('logo-container');
-        logo.style.top = (topMm * 3.78) + 'px';
-        logo.style.left = (leftMm * 3.78) + 'px';
+    function mover(r, c) {
+        const next = document.getElementById(`cell-${r}-${c}`);
+        if(next) next.focus();
     }
 
-    window.onload = initExcel;
+    window.onload = initStructure;
 </script>
 </body>
 </html>
