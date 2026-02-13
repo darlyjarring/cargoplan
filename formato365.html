@@ -2,23 +2,32 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>COMERSUR | Cargo Plan Master (DAE Sync)</title>
+    <title>COMERSUR | Cargo Plan Master Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root { --excel-border: #d1d1d1; --excel-selected: #107c41; --header-bg: #f3f2f1; }
         body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .excel-toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px 15px; display: flex; align-items: center; gap: 10px; }
-        .excel-viewport { flex: 1; overflow: auto; background: white; }
+        .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
         table { border-collapse: collapse; table-layout: fixed; width: max-content; }
+        
+        /* Coordenadas de diseño exactas */
         .col-A { width: 35px; } .col-B { width: 140px; } .col-C { width: 100px; } .col-D { width: 230px; } 
         .col-E { width: 150px; } .col-F { width: 130px; } .col-G { width: 110px; } .col-H { width: 130px; }
         .col-I { width: 100px; } .col-J { width: 110px; } .col-K { width: 130px; } .col-L { width: 220px; }
+        .col-M { width: 130px; } .col-N { width: 130px; } .col-O { width: 110px; } .col-P { width: 260px; }
+        .col-Q { width: 180px; } .col-R { width: 130px; }
+
         td { border: 0.5px solid var(--excel-border); padding: 0 5px; font-size: 11px; outline: none; white-space: nowrap; vertical-align: middle; height: 25px; }
         td:focus { border: 2px solid var(--excel-selected) !important; background: #fff; z-index: 10; position: relative; }
-        .row-label { background: var(--header-bg); text-align: center; color: #666; width: 35px; border-right: 1px solid #c0c0c0; }
+        
+        .row-label { background: var(--header-bg); text-align: center; color: #666; width: 35px; pointer-events: none; border-right: 1px solid #c0c0c0; }
         .col-label { background: var(--header-bg); text-align: center; color: #666; height: 22px; }
-        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; }
+        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; line-height: 1.2; }
+        
+        .logo-box { position: absolute; top: 10px; left: 45px; background: #003366; color: white; padding: 5px 15px; font-weight: bold; font-size: 24px; z-index: 5; }
+
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; }
         .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; }
         .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
@@ -28,12 +37,13 @@
 
 <div class="excel-toolbar">
     <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana">
-    <button onclick="buscarDatos()" class="btn btn-sm btn-primary">Cargar Datos</button>
+    <button onclick="buscarDatos()" class="btn btn-sm btn-primary">Cargar Cargo Plan</button>
     <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()"><option>Nave...</option></select>
     <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="generarTodo()"><option>Puerto...</option></select>
 </div>
 
 <div class="excel-viewport">
+    <div class="logo-box">COMERSUR</div>
     <table id="excel-table">
         <thead><tr id="head-letters" class="col-label"></tr></thead>
         <tbody id="grid-body"></tbody>
@@ -47,6 +57,20 @@
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
     let fullData = [];
     let masterMap = {}; 
+
+    function init() {
+        const head = document.getElementById('head-letters');
+        const body = document.getElementById('grid-body');
+        head.innerHTML = `<td></td>` + cols.map(c => `<td class="col-${c}">${c}</td>`).join('');
+        for (let i = 1; i <= 60; i++) {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="row-label">${i}</td>` + 
+                cols.map(c => `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`).join('');
+            body.appendChild(tr);
+        }
+        dibujarEsqueleto();
+        setupNavigation();
+    }
 
     function normalizarPuerto(p) {
         if (!p) return "";
@@ -64,7 +88,7 @@
         const { data: contenedores } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
         if (!contenedores) return;
 
-        // 2. Obtener DAEs vinculadas por Booking
+        // 2. Obtener DAEs vinculadas por Booking desde la base REPORTE_DAES
         const bookings = [...new Set(contenedores.map(c => c.booking))].filter(Boolean);
         const { data: daes } = await _supabase.from('reporte_daes').select('*').in('booking', bookings);
 
@@ -99,19 +123,24 @@
         const pto = document.getElementById('selPuerto').value;
         const filtrado = fullData.filter(d => (d.vapor||d.barco||d.nave) === buq && normalizarPuerto(d.puerto||d.terminal) === pto);
         limpiarYTabular(filtrado);
+        crearTabs(filtrado);
     }
 
     function limpiarYTabular(datos) {
-        for(let r=10; r<=60; r++) cols.forEach(c => setCelda(r, c, ''));
+        for(let r=1; r<=60; r++) { if(r<9 || r>9) cols.forEach(c => setCelda(r, c, '')); }
         if(!datos.length) return;
 
         const infoM = masterMap[datos[0].booking.trim()] || {};
 
-        setCelda(5, 'C', document.getElementById('selBuque').value);
-        setCelda(5, 'I', document.getElementById('txtSemana').value);
-        setCelda(5, 'L', infoM.cliente || ""); // Cliente desde la base de DAEs
-        setCelda(6, 'C', document.getElementById('selPuerto').value);
-        setCelda(8, 'L', infoM.destino || ""); // Destino desde la base de DAEs
+        // RE-DIBUJAR DISEÑO CABECERA
+        setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'C', document.getElementById('selBuque').value);
+        setCelda(5, 'H', 'WEEK:', true); setCelda(5, 'I', document.getElementById('txtSemana').value);
+        setCelda(5, 'K', 'TYPE OF BOX:', true); setCelda(5, 'L', infoM.cliente || ""); 
+        
+        setCelda(6, 'B', 'PORT:', true); setCelda(6, 'C', document.getElementById('selPuerto').value);
+        
+        setCelda(7, 'K', 'COMMODITY:', true); setCelda(7, 'L', 'BANANAS');
+        setCelda(8, 'K', 'DESTINATION:', true); setCelda(8, 'L', infoM.destino || "");
 
         datos.forEach((reg, i) => {
             const r = 10 + i;
@@ -129,31 +158,47 @@
             setCelda(r, 'K', reg.termografo);
             setCelda(r, 'L', reg.marca); 
             setCelda(r, 'N', reg.fecha);
+            setCelda(r, 'O', reg.codigo_productor);
+            setCelda(r, 'P', reg.productor);
         });
     }
 
-    function setCelda(r, c, txt) { const el = document.getElementById(`cell-${r}-${c}`); if(el) el.innerText = txt || ''; }
-    
-    // Iniciar estructura y navegación (Flechas/Enter)
-    window.onload = () => {
-        const body = document.getElementById('grid-body');
-        for (let i = 1; i <= 60; i++) {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `<td class="row-label">${i}</td>` + 
-                cols.map(c => `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`).join('');
-            body.appendChild(tr);
-        }
-        // Navegación similar a Office 365
+    function dibujarEsqueleto() {
+        const h = ["N°","Container Number","Amount Of Boxes","Dae","Booking","Main Bottle Seal","Vent Seals","Sticker Seal","TCI Seal","Security Seal","Thermograph","Brand","Observations","Consolidation Date","Producer Codes","Producers","Farm","Inspection"];
+        h.forEach((t, i) => { const el = document.getElementById(`cell-9-${cols[i]}`); if(el){ el.innerText=t; el.className='header-9'; } });
+    }
+
+    function setupNavigation() {
         document.addEventListener('keydown', (e) => {
             const active = document.activeElement;
             if (active.tagName !== 'TD') return;
             let r = parseInt(active.dataset.row), cIdx = cols.indexOf(active.dataset.col);
-            if (e.key === 'ArrowRight' || e.key === 'Tab') { e.preventDefault(); document.getElementById(`cell-${r}-${cols[cIdx+1]}`)?.focus(); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); document.getElementById(`cell-${r}-${cols[cIdx-1]}`)?.focus(); }
-            if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); document.getElementById(`cell-${r+1}-${cols[cIdx]}`)?.focus(); }
-            if (e.key === 'ArrowUp') { e.preventDefault(); document.getElementById(`cell-${r-1}-${cols[cIdx]}`)?.focus(); }
+            if (e.key === 'ArrowRight' || e.key === 'Tab') { e.preventDefault(); focusCell(r, cols[cIdx + 1]); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); focusCell(r, cols[cIdx - 1]); }
+            if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); focusCell(r + 1, cols[cIdx]); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); focusCell(r - 1, cols[cIdx]); }
         });
-    };
+    }
+
+    function focusCell(r, c) { const el = document.getElementById(`cell-${r}-${c}`); if (el) el.focus(); }
+    function setCelda(r, c, txt, b=false) { 
+        const el = document.getElementById(`cell-${r}-${c}`); 
+        if(el) { el.innerText = txt || ''; el.style.fontWeight = b ? 'bold' : 'normal'; } 
+    }
+    
+    function crearTabs(datos) {
+        const bar = document.getElementById('tabs-bar');
+        bar.innerHTML = '<div class="tab-item active" onclick="generarTodo()">MASTER</div>';
+        const grupos = {};
+        datos.forEach(r => { const k = `${r.destino} - ${r.marca}`; if(!grupos[k]) grupos[k] = []; grupos[k].push(r); });
+        Object.keys(grupos).forEach(k => {
+            const div = document.createElement('div'); div.className = 'tab-item'; div.innerText = k;
+            div.onclick = () => { document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); div.classList.add('active'); limpiarYTabular(grupos[k]); };
+            bar.appendChild(div);
+        });
+    }
+
+    window.onload = init;
 </script>
 </body>
 </html>
