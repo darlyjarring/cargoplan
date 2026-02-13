@@ -6,59 +6,41 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        :root {
-            --excel-border: #d1d1d1;
-            --excel-selected: #107c41;
-            --header-bg: #f3f2f1;
-            --yellow-header: #fff2cc;
-            --green-header: #e2efda;
-        }
+        :root { --excel-border: #d1d1d1; --excel-selected: #107c41; --header-bg: #f3f2f1; --yellow-header: #fff2cc; --green-header: #e2efda; }
         body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
         .excel-toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px 15px; display: flex; align-items: center; gap: 10px; }
         .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
         table { border-collapse: collapse; table-layout: fixed; width: max-content; background: white; }
-        
-        /* Medidas de Columnas (mm a px aprox) */
-        .col-A { width: 35px; }   .col-B { width: 130px; }  .col-C { width: 85px; }
-        .col-D { width: 230px; }  .col-E { width: 145px; }  .col-F { width: 135px; }
-        .col-G { width: 110px; }  .col-H { width: 140px; }  .col-I { width: 105px; }
-        .col-J { width: 110px; }  .col-K { width: 135px; }  .col-L { width: 205px; }
-        .col-M { width: 125px; }  .col-N { width: 120px; }  .col-O { width: 95px; }
-        .col-P { width: 370px; }  .col-Q { width: 190px; }  .col-R { width: 115px; }
-
+        .col-A { width: 35px; } .col-B { width: 130px; } .col-C { width: 85px; } .col-D { width: 230px; } .col-E { width: 145px; } .col-F { width: 135px; }
+        .col-G { width: 110px; } .col-H { width: 140px; } .col-I { width: 105px; } .col-J { width: 110px; } .col-K { width: 135px; } .col-L { width: 205px; }
+        .col-M { width: 125px; } .col-N { width: 120px; } .col-O { width: 95px; } .col-P { width: 370px; } .col-Q { width: 190px; } .col-R { width: 115px; }
         tr.h-15 { height: 21px; } tr.h-63 { height: 84px; } tr.h-84 { height: 112px; } tr.h-19 { height: 26px; }
         td { border: 0.5px solid var(--excel-border); padding: 0 4px; font-size: 11px; outline: none; white-space: nowrap; overflow: hidden; vertical-align: middle; }
         td:focus { border: 2px solid var(--excel-selected) !important; background-color: #fff; z-index: 5; }
-        
         .row-label { background: var(--header-bg); text-align: center; color: #666; font-size: 10px; width: 30px; }
         .col-label { background: var(--header-bg); text-align: center; color: #666; font-size: 11px; height: 20px; }
         .header-9 { font-weight: bold; text-align: center; border-bottom: 2px solid #000 !important; }
-        #logo-container { position: absolute; top: 15px; left: 35px; z-index: 10; pointer-events: none; }
-        
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; overflow-x: auto; }
-        .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; white-space: nowrap; display: flex; align-items: center; }
-        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; background: #e6e6e6; }
+        .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; }
+        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="excel-toolbar">
-    <select id="selSemana" class="form-select form-select-sm w-auto" onchange="cargarBuques()">
-        <option value="">1. Semana</option>
-        <option value="1">Semana 1</option>
-        <option value="2">Semana 2</option>
-        <option value="7">Semana 7</option>
-    </select>
+    <input type="number" id="numSemana" class="form-control form-control-sm w-auto" placeholder="Semana (ej: 7)">
+    <button onclick="cargarBuques()" class="btn btn-sm btn-primary">Buscar Naves</button>
+    
     <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()">
-        <option value="">2. Buque / Nave</option>
+        <option value="">2. Nave / Vapor / Barco</option>
     </select>
     <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="cargarDatosFinales()">
         <option value="">3. Puerto / Terminal</option>
     </select>
+    <span id="status" class="text-muted small"></span>
 </div>
 
 <div class="excel-viewport">
-    <div id="logo-container"><img src="https://via.placeholder.com/250x80?text=COMERSUR+CIA+LTDA" width="250"></div>
     <table id="excel-table">
         <thead id="head-letters"></thead>
         <tbody id="grid-body"></tbody>
@@ -70,7 +52,6 @@
 </div>
 
 <script>
-    // Inicializar Supabase (con tu URL y Key)
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
 
@@ -94,11 +75,10 @@
             body.appendChild(tr);
         }
         dibujarEsqueleto();
-        setupKeyNav();
     }
 
     function dibujarEsqueleto() {
-        setCelda(5, 'B', 'VESSEL (NAVE):', true);
+        setCelda(5, 'B', 'VESSEL:', true);
         setCelda(5, 'H', 'WEEK:', true);
         setCelda(5, 'K', 'TYPE OF BOX (CLIENTE):', true);
         setCelda(6, 'B', 'PORT (TERMINAL):', true);
@@ -122,44 +102,59 @@
     }
 
     async function cargarBuques() {
-        const sem = document.getElementById('selSemana').value;
+        const sem = document.getElementById('numSemana').value;
         const selB = document.getElementById('selBuque');
-        selB.innerHTML = '<option value="">2. Buque / Nave</option>';
-        if(!sem) return;
-
-        // Buscamos en 'vapor' o 'barco'
-        const { data } = await _supabase.from('distribucion_diaria').select('vapor, barco').eq('semana', sem);
+        const status = document.getElementById('status');
         
-        const unicos = [...new Set(data.map(i => i.vapor || i.barco))].filter(Boolean);
+        if(!sem) return alert("Ingresa la semana");
+        status.innerText = "Buscando naves...";
+
+        // Buscamos naves en 'distribucion_diaria' (columna semana como número o texto)
+        const { data, error } = await _supabase
+            .from('distribucion_diaria')
+            .select('vapor, barco, nave')
+            .or(`semana.eq.${sem},semana.eq."${sem}"`);
+
+        if(error || !data.length) {
+            status.innerText = "No se encontraron datos.";
+            return;
+        }
+
+        const unicos = [...new Set(data.map(i => i.vapor || i.barco || i.nave))].filter(Boolean);
+        selB.innerHTML = '<option value="">2. Nave / Vapor / Barco</option>';
         unicos.forEach(b => selB.innerHTML += `<option value="${b}">${b}</option>`);
         selB.disabled = false;
+        status.innerText = "Naves cargadas.";
     }
 
     async function cargarPuertos() {
-        const sem = document.getElementById('selSemana').value;
+        const sem = document.getElementById('numSemana').value;
         const buq = document.getElementById('selBuque').value;
         const selP = document.getElementById('selPuerto');
-        selP.innerHTML = '<option value="">3. Puerto / Terminal</option>';
-        if(!buq) return;
-
-        const { data } = await _supabase.from('distribucion_diaria').select('puerto, terminal').eq('semana', sem).or(`vapor.eq."${buq}",barco.eq."${buq}"`);
         
+        const { data } = await _supabase
+            .from('distribucion_diaria')
+            .select('puerto, terminal')
+            .or(`semana.eq.${sem},semana.eq."${sem}"`)
+            .or(`vapor.eq."${buq}",barco.eq."${buq}",nave.eq."${buq}"`);
+
         const unicos = [...new Set(data.map(i => i.puerto || i.terminal))].filter(Boolean);
+        selP.innerHTML = '<option value="">3. Puerto / Terminal</option>';
         unicos.forEach(p => selP.innerHTML += `<option value="${p}">${p}</option>`);
         selP.disabled = false;
     }
 
     async function cargarDatosFinales() {
-        const sem = document.getElementById('selSemana').value;
+        const sem = document.getElementById('numSemana').value;
         const buq = document.getElementById('selBuque').value;
         const pto = document.getElementById('selPuerto').value;
-        if(!pto) return;
 
         limpiarTabla();
-        // Consulta flexible para puerto/terminal y vapor/barco
-        const { data } = await _supabase.from('distribucion_diaria').select('*')
-            .eq('semana', sem)
-            .or(`vapor.eq."${buq}",barco.eq."${buq}"`)
+        const { data } = await _supabase
+            .from('distribucion_diaria')
+            .select('*')
+            .or(`semana.eq.${sem},semana.eq."${sem}"`)
+            .or(`vapor.eq."${buq}",barco.eq."${buq}",nave.eq."${buq}"`)
             .or(`puerto.eq."${pto}",terminal.eq."${pto}"`);
 
         if(data && data.length > 0) {
@@ -170,38 +165,33 @@
             setCelda(7, 'L', 'BANANAS');
             setCelda(8, 'L', data[0].destino);
 
-            rellenarGrid(data);
-            generarPestañasDinamicas(data);
+            data.forEach((reg, i) => {
+                const r = 10 + i;
+                setCelda(r, 'A', i+1);
+                setCelda(r, 'B', reg.contenedor);
+                setCelda(r, 'C', reg.cajas);
+                setCelda(r, 'D', reg.dae);
+                setCelda(r, 'E', reg.booking);
+                setCelda(r, 'F', reg.sello_nav);
+                setCelda(r, 'G', reg.sello_vent);
+                setCelda(r, 'H', reg.sello_sticker);
+                setCelda(r, 'I', reg.sello_tci);
+                setCelda(r, 'J', reg.sello_sticker_nav);
+                setCelda(r, 'K', reg.termografo);
+                setCelda(r, 'L', reg.marca);
+                setCelda(r, 'N', reg.fecha);
+                setCelda(r, 'P', reg.productor);
+            });
+            generarHojas(data);
         }
     }
 
-    function rellenarGrid(filas) {
-        filas.forEach((reg, i) => {
-            const r = 10 + i;
-            setCelda(r, 'A', i+1);
-            setCelda(r, 'B', reg.contenedor);
-            setCelda(r, 'C', reg.cajas);
-            setCelda(r, 'D', reg.dae);
-            setCelda(r, 'E', reg.booking);
-            setCelda(r, 'F', reg.sello_nav);
-            setCelda(r, 'G', reg.sello_vent);
-            setCelda(r, 'H', reg.sello_sticker);
-            setCelda(r, 'I', reg.sello_tci);
-            setCelda(r, 'J', reg.sello_sticker_nav);
-            setCelda(r, 'K', reg.termografo);
-            setCelda(r, 'L', reg.marca);
-            setCelda(r, 'N', reg.fecha);
-            setCelda(r, 'P', reg.productor);
-        });
-    }
-
-    function generarPestañasDinamicas(data) {
+    function generarHojas(data) {
         const bar = document.getElementById('tabs-bar');
-        bar.innerHTML = '<div class="tab-item active" id="tab-master" onclick="mostrarTodo()">MASTER</div>';
-        
+        bar.innerHTML = '<div class="tab-item active" onclick="cargarDatosFinales()">MASTER</div>';
         const grupos = {};
         data.forEach(r => {
-            const key = `${r.destino || 'SIN DESTINO'} - ${r.marca || 'SIN MARCA'}`;
+            const key = `${r.destino || 'SD'} - ${r.marca || 'SM'}`;
             if(!grupos[key]) grupos[key] = [];
             grupos[key].push(r);
         });
@@ -214,42 +204,23 @@
                 document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
                 div.classList.add('active');
                 limpiarTabla();
-                rellenarGrid(grupos[key]);
+                rellenarHojas(grupos[key]);
             };
             bar.appendChild(div);
         });
     }
 
-    function mostrarTodo() {
-        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-        document.getElementById('tab-master').classList.add('active');
-        limpiarTabla();
-        cargarDatosFinales(); // Recarga el master
-    }
-
-    function limpiarTabla() {
-        for(let r=10; r<=100; r++) {
-            cols.forEach(c => { const el = document.getElementById(`cell-${r}-${c}`); if(el) el.innerText = ''; });
-        }
-    }
-
-    function setCelda(r, c, txt, bold=false) {
-        const el = document.getElementById(`cell-${r}-${c}`);
-        if(el) { el.innerText = txt || ''; if(bold) el.style.fontWeight = 'bold'; }
-    }
-
-    function setupKeyNav() {
-        document.addEventListener('keydown', e => {
-            const a = document.activeElement; if(a.tagName !== 'TD') return;
-            const r = parseInt(a.dataset.row), cIdx = cols.indexOf(a.dataset.col);
-            if(e.key === 'ArrowRight' && cIdx < cols.length-1) mover(r, cols[cIdx+1]);
-            if(e.key === 'ArrowLeft' && cIdx > 0) mover(r, cols[cIdx-1]);
-            if(e.key === 'ArrowDown') mover(r+1, cols[cIdx]);
-            if(e.key === 'ArrowUp' && r > 1) mover(r-1, cols[cIdx]);
-            if(e.key === 'Enter') { e.preventDefault(); mover(r+1, cols[cIdx]); }
+    function rellenarHojas(filas) {
+        filas.forEach((reg, i) => {
+            const r = 10 + i;
+            setCelda(r, 'A', i+1); setCelda(r, 'B', reg.contenedor); setCelda(r, 'C', reg.cajas);
+            setCelda(r, 'E', reg.booking); setCelda(r, 'F', reg.sello_nav); setCelda(r, 'I', reg.sello_tci);
+            setCelda(r, 'L', reg.marca); setCelda(r, 'N', reg.fecha);
         });
     }
-    function mover(r, c) { const n = document.getElementById(`cell-${r}-${c}`); if(n) n.focus(); }
+
+    function limpiarTabla() { for(let r=10; r<=100; r++) { cols.forEach(c => { const el = document.getElementById(`cell-${r}-${c}`); if(el) el.innerText = ''; }); } }
+    function setCelda(r, c, txt, bold=false) { const el = document.getElementById(`cell-${r}-${c}`); if(el) { el.innerText = txt || ''; if(bold) el.style.fontWeight = 'bold'; } }
 
     window.onload = init;
 </script>
