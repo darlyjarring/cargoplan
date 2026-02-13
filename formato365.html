@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>COMERSUR | Cargo Plan Master</title>
+    <title>COMERSUR | Cargo Plan Master Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -12,30 +12,32 @@
         .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
         table { border-collapse: collapse; table-layout: fixed; width: max-content; }
         
-        .col-A { width: 35px; } .col-B { width: 135px; } .col-C { width: 90px; } .col-D { width: 220px; } 
+        /* Ajuste de anchos según tus imágenes */
+        .col-A { width: 35px; } .col-B { width: 140px; } .col-C { width: 100px; } .col-D { width: 220px; } 
         .col-E { width: 140px; } .col-F { width: 130px; } .col-G { width: 110px; } .col-H { width: 130px; }
-        .col-I { width: 100px; } .col-J { width: 110px; } .col-K { width: 150px; } .col-L { width: 220px; }
-        .col-M { width: 120px; } .col-N { width: 120px; } .col-O { width: 100px; } .col-P { width: 250px; }
+        .col-I { width: 100px; } .col-J { width: 110px; } .col-K { width: 130px; } .col-L { width: 200px; }
+        .col-M { width: 130px; } .col-N { width: 130px; } .col-O { width: 110px; } .col-P { width: 260px; }
+        .col-Q { width: 180px; } .col-R { width: 130px; }
 
-        td { border: 0.5px solid var(--excel-border); padding: 0 5px; font-size: 11px; outline: none; white-space: nowrap; vertical-align: middle; height: 24px; }
+        td { border: 0.5px solid var(--excel-border); padding: 0 5px; font-size: 11px; outline: none; white-space: nowrap; vertical-align: middle; height: 25px; }
         td:focus { border: 2px solid var(--excel-selected) !important; background: #fff; z-index: 10; position: relative; }
         
-        .row-label { background: var(--header-bg); text-align: center; color: #666; width: 30px; pointer-events: none; }
-        .col-label { background: var(--header-bg); text-align: center; color: #666; height: 20px; }
-        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; }
+        .row-label { background: var(--header-bg); text-align: center; color: #666; width: 35px; pointer-events: none; border-right: 1px solid #c0c0c0; }
+        .col-label { background: var(--header-bg); text-align: center; color: #666; height: 22px; }
+        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; line-height: 1.2; }
         
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; }
         .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; }
-        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
+        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; background: #fff; }
     </style>
 </head>
 <body>
 
 <div class="excel-toolbar">
     <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana">
-    <button onclick="buscarDatos()" class="btn btn-sm btn-primary">Cargar Semana</button>
-    <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()"><option>Nave</option></select>
-    <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="generarTodo()"><option>Puerto</option></select>
+    <button onclick="buscarDatos()" class="btn btn-sm btn-primary">Cargar Datos</button>
+    <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()"><option>Nave...</option></select>
+    <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="generarTodo()"><option>Puerto...</option></select>
 </div>
 
 <div class="excel-viewport">
@@ -56,7 +58,7 @@
         const head = document.getElementById('head-letters');
         const body = document.getElementById('grid-body');
         head.innerHTML = `<td></td>` + cols.map(c => `<td class="col-${c}">${c}</td>`).join('');
-        for (let i = 1; i <= 60; i++) {
+        for (let i = 1; i <= 80; i++) {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td class="row-label">${i}</td>` + 
                 cols.map(c => `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`).join('');
@@ -66,13 +68,14 @@
         setupNavigation();
     }
 
+    // Normalización de Puertos según tu instrucción
     function normalizarPuerto(p) {
         if (!p) return "";
-        const pUp = p.toUpperCase();
-        if (pUp.includes("NAPORTEC")) return "NAPORTEC";
-        if (pUp.includes("TPG") || pUp.includes("INARPI")) return "TPG";
-        if (pUp.includes("POSORJA") || pUp.includes("DP WORLD")) return "POSORJA";
-        if (pUp.includes("CONTECON") || pUp.includes("CGSA")) return "CONTECON";
+        const u = p.toUpperCase();
+        if (u.includes("NAPORTEC")) return "NAPORTEC";
+        if (u.includes("TPG") || u.includes("INARPI")) return "TPG";
+        if (u.includes("POSORJA") || u.includes("DP WORLD")) return "POSORJA";
+        if (u.includes("CONTECON") || u.includes("CGSA")) return "CONTECON";
         return p;
     }
 
@@ -83,7 +86,7 @@
             let r = parseInt(active.dataset.row), cIdx = cols.indexOf(active.dataset.col);
             if (e.key === 'ArrowRight' || e.key === 'Tab') { e.preventDefault(); if (cIdx < cols.length - 1) focusCell(r, cols[cIdx + 1]); }
             if (e.key === 'ArrowLeft') { e.preventDefault(); if (cIdx > 0) focusCell(r, cols[cIdx - 1]); }
-            if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); if (r < 60) focusCell(r + 1, cols[cIdx]); }
+            if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); if (r < 80) focusCell(r + 1, cols[cIdx]); }
             if (e.key === 'ArrowUp') { e.preventDefault(); if (r > 1) focusCell(r - 1, cols[cIdx]); }
         });
     }
@@ -93,6 +96,7 @@
     function dibujarEsqueleto() {
         setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'H', 'WEEK:', true); setCelda(5, 'K', 'TYPE OF BOX:', true);
         setCelda(6, 'B', 'PORT:', true); setCelda(7, 'K', 'COMMODITY:', true); setCelda(8, 'K', 'DESTINATION:', true);
+        
         const h9 = ["N°","Container Number","Amount Of Boxes","Dae","Booking","Main Bottle Seal","Vent Seals","Sticker Seal","TCI Seal","Security Seal","Thermograph","Brand","Observations","Consolidation Date","Producer Codes","Producers","Farm","Inspection"];
         h9.forEach((t, i) => { const el = document.getElementById(`cell-9-${cols[i]}`); if(el){ el.innerText=t; el.className='header-9'; } });
     }
@@ -124,26 +128,39 @@
     }
 
     function limpiarYTabular(datos) {
-        for(let r=10; r<=60; r++) cols.forEach(c => setCelda(r, c, ''));
+        for(let r=10; r<=80; r++) cols.forEach(c => setCelda(r, c, ''));
         if(!datos.length) return;
         const d = datos[0];
+        
+        // Cabeceras derechas según imagen
         setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'I', document.getElementById('txtSemana').value);
-        setCelda(5, 'L', d.cliente); // Cliente a la derecha de TYPE OF BOX
+        setCelda(5, 'L', d.cliente); // Derecha de TYPE OF BOX
         setCelda(6, 'C', document.getElementById('selPuerto').value);
-        setCelda(7, 'L', 'BANANAS');
-        setCelda(8, 'L', d.destino); // Destino a la derecha de DESTINATION
+        setCelda(7, 'L', 'BANANAS'); // Derecha de COMMODITY
+        setCelda(8, 'L', d.destino); // Derecha de DESTINATION
 
         datos.forEach((reg, i) => {
             const r = 10 + i;
-            setCelda(r, 'A', i + 1); setCelda(r, 'B', reg.contenedor); setCelda(r, 'C', reg.cajas);
-            setCelda(r, 'D', reg.dae); // DAE en Columna D
+            setCelda(r, 'A', i + 1); 
+            setCelda(r, 'B', reg.contenedor); 
+            setCelda(r, 'C', reg.cajas);
+            setCelda(r, 'D', reg.dae); // Columna D corregida
             setCelda(r, 'E', reg.booking);
-            setCelda(r, 'F', reg.sello_nav); setCelda(r, 'G', reg.sello_vent);
-            setCelda(r, 'H', reg.sello_sticker); setCelda(r, 'I', reg.sello_tci);
-            setCelda(r, 'J', reg.sello_sticker_nav); setCelda(r, 'K', reg.termografo);
-            setCelda(r, 'L', reg.marca); setCelda(r, 'N', reg.fecha);
+            // Mapeo de sellos e información técnica
+            setCelda(r, 'F', reg.sello_nav); 
+            setCelda(r, 'G', reg.sello_vent);
+            setCelda(r, 'H', reg.sello_sticker); 
+            setCelda(r, 'I', reg.sello_tci);
+            setCelda(r, 'J', reg.sello_sticker_nav); 
+            setCelda(r, 'K', reg.termografo);
+            setCelda(r, 'L', reg.marca); 
+            setCelda(r, 'M', reg.observaciones);
+            setCelda(r, 'N', reg.fecha); // Consolidation Date
+            setCelda(r, 'O', reg.codigo_productor);
             setCelda(r, 'P', reg.productor);
+            setCelda(r, 'Q', reg.hacienda);
+            setCelda(r, 'R', reg.inspeccion);
         });
     }
 
@@ -154,7 +171,11 @@
         datos.forEach(r => { const k = `${r.destino} - ${r.marca}`; if(!grupos[k]) grupos[k] = []; grupos[k].push(r); });
         Object.keys(grupos).forEach(k => {
             const div = document.createElement('div'); div.className = 'tab-item'; div.innerText = k;
-            div.onclick = () => { document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); div.classList.add('active'); limpiarYTabular(grupos[k]); };
+            div.onclick = () => { 
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); 
+                div.classList.add('active'); 
+                limpiarYTabular(grupos[k]); 
+            };
             bar.appendChild(div);
         });
     }
