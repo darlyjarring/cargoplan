@@ -9,30 +9,21 @@
         :root { --excel-border: #d1d1d1; --excel-selected: #107c41; --header-bg: #f3f2f1; }
         body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
         .excel-toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px 15px; display: flex; align-items: center; gap: 10px; }
-        .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
+        .excel-viewport { flex: 1; overflow: auto; background: white; }
         table { border-collapse: collapse; table-layout: fixed; width: max-content; }
-        
-        /* Ajuste de anchos exactos según tus capturas */
         .col-A { width: 35px; } .col-B { width: 140px; } .col-C { width: 100px; } .col-D { width: 230px; } 
         .col-E { width: 140px; } .col-F { width: 130px; } .col-G { width: 110px; } .col-H { width: 130px; }
         .col-I { width: 100px; } .col-J { width: 110px; } .col-K { width: 130px; } .col-L { width: 220px; }
         .col-M { width: 130px; } .col-N { width: 130px; } .col-O { width: 110px; } .col-P { width: 260px; }
         .col-Q { width: 180px; } .col-R { width: 130px; }
-
         td { border: 0.5px solid var(--excel-border); padding: 0 5px; font-size: 11px; outline: none; white-space: nowrap; vertical-align: middle; height: 25px; }
         td:focus { border: 2px solid var(--excel-selected) !important; background: #fff; z-index: 10; position: relative; }
-        
-        .row-label { background: var(--header-bg); text-align: center; color: #666; width: 35px; pointer-events: none; border-right: 1px solid #c0c0c0; }
+        .row-label { background: var(--header-bg); text-align: center; color: #666; width: 35px; border-right: 1px solid #c0c0c0; }
         .col-label { background: var(--header-bg); text-align: center; color: #666; height: 22px; }
-        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; line-height: 1.2; }
-        
-        /* Estilo para el Logo */
-        .logo-container { position: absolute; top: 10px; left: 40px; z-index: 5; }
-        .logo-box { background: #003366; color: white; padding: 5px 15px; font-weight: bold; font-size: 24px; border-radius: 4px; }
-
+        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; }
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; }
         .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; }
-        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; background: #fff; }
+        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
     </style>
 </head>
 <body>
@@ -45,9 +36,6 @@
 </div>
 
 <div class="excel-viewport">
-    <div class="logo-container">
-        <div class="logo-box">COMERSUR <span style="font-weight: normal; font-size: 16px;">Cia. Ltda.</span></div>
-    </div>
     <table id="excel-table">
         <thead><tr id="head-letters" class="col-label"></tr></thead>
         <tbody id="grid-body"></tbody>
@@ -60,12 +48,13 @@
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
     let fullData = [];
+    let bookingMap = {}; // Mapa para DAE, Cliente y Destino por Booking
 
     function init() {
         const head = document.getElementById('head-letters');
         const body = document.getElementById('grid-body');
         head.innerHTML = `<td></td>` + cols.map(c => `<td class="col-${c}">${c}</td>`).join('');
-        for (let i = 1; i <= 80; i++) {
+        for (let i = 1; i <= 60; i++) {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td class="row-label">${i}</td>` + 
                 cols.map(c => `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`).join('');
@@ -85,38 +74,19 @@
         return p;
     }
 
-    function setupNavigation() {
-        document.addEventListener('keydown', (e) => {
-            const active = document.activeElement;
-            if (active.tagName !== 'TD') return;
-            let r = parseInt(active.dataset.row), cIdx = cols.indexOf(active.dataset.col);
-            if (e.key === 'ArrowRight' || e.key === 'Tab') { e.preventDefault(); if (cIdx < cols.length - 1) focusCell(r, cols[cIdx + 1]); }
-            if (e.key === 'ArrowLeft') { e.preventDefault(); if (cIdx > 0) focusCell(r, cols[cIdx - 1]); }
-            if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); if (r < 80) focusCell(r + 1, cols[cIdx]); }
-            if (e.key === 'ArrowUp') { e.preventDefault(); if (r > 1) focusCell(r - 1, cols[cIdx]); }
-        });
-    }
-
-    function focusCell(r, c) { const el = document.getElementById(`cell-${r}-${c}`); if (el) el.focus(); }
-
-    function dibujarEsqueleto() {
-        // Cabeceras según imagen_a28048.png
-        setCelda(5, 'B', 'VESSEL:', true); 
-        setCelda(5, 'H', 'WEEK:', true); 
-        setCelda(5, 'K', 'TYPE OF BOX:', true);
-        setCelda(6, 'B', 'PORT:', true); 
-        setCelda(7, 'K', 'COMMODITY:', true); 
-        setCelda(8, 'K', 'DESTINATION:', true);
-        
-        // Encabezados de la fila 9
-        const h9 = ["N°","Container Number","Amount Of Boxes","Dae","Booking","Main Bottle Seal (Shipping line)","Vent Seals (Shipping line)","Sticker Seal (Shipping line)","TCI Seal","Security Seal (Shipper)","Thermograph","Brand","Observations","Consolidation Date","Producer Codes","Producers","Farm","Inspection"];
-        h9.forEach((t, i) => { const el = document.getElementById(`cell-9-${cols[i]}`); if(el){ el.innerText=t; el.className='header-9'; } });
-    }
-
     async function buscarDatos() {
         const sem = document.getElementById('txtSemana').value;
         const { data } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
         fullData = data || [];
+        
+        // Crear mapa de referencia por Booking para asegurar que DAE y Cliente aparezcan
+        bookingMap = {};
+        fullData.forEach(r => {
+            if (r.booking && !bookingMap[r.booking]) {
+                bookingMap[r.booking] = { dae: r.dae, cliente: r.cliente, destino: r.destino };
+            }
+        });
+
         const buques = [...new Set(fullData.map(d => d.vapor || d.barco || d.nave))].filter(Boolean);
         const sel = document.getElementById('selBuque');
         sel.innerHTML = '<option>Nave...</option>' + buques.map(b => `<option value="${b}">${b}</option>`).join('');
@@ -140,26 +110,27 @@
     }
 
     function limpiarYTabular(datos) {
-        for(let r=10; r<=80; r++) cols.forEach(c => setCelda(r, c, ''));
+        for(let r=10; r<=60; r++) cols.forEach(c => setCelda(r, c, ''));
         if(!datos.length) return;
-        const d = datos[0];
         
-        // Ubicación de datos dinámicos en cabecera
+        const d = datos[0];
+        const masterInfo = bookingMap[d.booking] || {}; // Recuperar info del booking
+
         setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'I', document.getElementById('txtSemana').value);
-        setCelda(5, 'L', d.cliente); // CLIENTE a la derecha de TYPE OF BOX
+        setCelda(5, 'L', masterInfo.cliente || d.cliente); // Cliente en L5
         setCelda(6, 'C', document.getElementById('selPuerto').value);
-        setCelda(7, 'L', 'BANANAS'); // COMMODITY
-        setCelda(8, 'L', d.destino); // DESTINO a la derecha de DESTINATION
+        setCelda(7, 'L', 'BANANAS');
+        setCelda(8, 'L', masterInfo.destino || d.destino); // Destino en L8
 
         datos.forEach((reg, i) => {
             const r = 10 + i;
+            const infoB = bookingMap[reg.booking] || {};
             setCelda(r, 'A', i + 1); 
             setCelda(r, 'B', reg.contenedor); 
             setCelda(r, 'C', reg.cajas);
-            setCelda(r, 'D', reg.dae); // DAE en Columna D
+            setCelda(r, 'D', infoB.dae || reg.dae); // DAE en Columna D
             setCelda(r, 'E', reg.booking);
-            // Mapeo de sellos según base de datos
             setCelda(r, 'F', reg.sello_nav); 
             setCelda(r, 'G', reg.sello_vent);
             setCelda(r, 'H', reg.sello_sticker); 
@@ -167,15 +138,33 @@
             setCelda(r, 'J', reg.sello_sticker_nav); 
             setCelda(r, 'K', reg.termografo);
             setCelda(r, 'L', reg.marca); 
-            setCelda(r, 'M', reg.observaciones);
-            setCelda(r, 'N', reg.fecha); // Consolidation Date
-            setCelda(r, 'O', reg.codigo_productor); // Producer Codes
-            setCelda(r, 'P', reg.productor); // Producers
-            setCelda(r, 'Q', reg.hacienda); // Farm
-            setCelda(r, 'R', reg.inspeccion); // Inspection
+            setCelda(r, 'N', reg.fecha);
+            setCelda(r, 'O', reg.codigo_productor);
+            setCelda(r, 'P', reg.productor);
         });
     }
 
+    // Navegación Office 365
+    function setupNavigation() {
+        document.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            if (active.tagName !== 'TD') return;
+            let r = parseInt(active.dataset.row), cIdx = cols.indexOf(active.dataset.col);
+            if (e.key === 'ArrowRight' || e.key === 'Tab') { e.preventDefault(); focusCell(r, cols[cIdx + 1]); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); focusCell(r, cols[cIdx - 1]); }
+            if (e.key === 'ArrowDown' || e.key === 'Enter') { e.preventDefault(); focusCell(r + 1, cols[cIdx]); }
+            if (e.key === 'ArrowUp') { e.preventDefault(); focusCell(r - 1, cols[cIdx]); }
+        });
+    }
+
+    function focusCell(r, c) { const el = document.getElementById(`cell-${r}-${c}`); if (el) el.focus(); }
+    function dibujarEsqueleto() {
+        setCelda(5, 'B', 'VESSEL:'); setCelda(5, 'H', 'WEEK:'); setCelda(5, 'K', 'TYPE OF BOX:');
+        setCelda(6, 'B', 'PORT:'); setCelda(7, 'K', 'COMMODITY:'); setCelda(8, 'K', 'DESTINATION:');
+        const h = ["N°","Container Number","Amount Of Boxes","Dae","Booking","Main Bottle Seal","Vent Seals","Sticker Seal","TCI Seal","Security Seal","Thermograph","Brand","Observations","Consolidation Date","Producer Codes","Producers","Farm","Inspection"];
+        h.forEach((t, i) => { const el = document.getElementById(`cell-9-${cols[i]}`); if(el){ el.innerText=t; el.className='header-9'; } });
+    }
+    function setCelda(r, c, txt) { const el = document.getElementById(`cell-${r}-${c}`); if(el) el.innerText = txt || ''; }
     function crearTabs(datos) {
         const bar = document.getElementById('tabs-bar');
         bar.innerHTML = '<div class="tab-item active" onclick="generarTodo()">MASTER</div>';
@@ -183,18 +172,9 @@
         datos.forEach(r => { const k = `${r.destino} - ${r.marca}`; if(!grupos[k]) grupos[k] = []; grupos[k].push(r); });
         Object.keys(grupos).forEach(k => {
             const div = document.createElement('div'); div.className = 'tab-item'; div.innerText = k;
-            div.onclick = () => { 
-                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); 
-                div.classList.add('active'); 
-                limpiarYTabular(grupos[k]); 
-            };
+            div.onclick = () => { document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); div.classList.add('active'); limpiarYTabular(grupos[k]); };
             bar.appendChild(div);
         });
-    }
-
-    function setCelda(r, c, txt, b=false) {
-        const el = document.getElementById(`cell-${r}-${c}`);
-        if(el) { el.innerText = txt || ''; el.style.fontWeight = b ? 'bold' : 'normal'; }
     }
     window.onload = init;
 </script>
