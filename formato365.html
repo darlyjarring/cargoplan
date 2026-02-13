@@ -12,7 +12,7 @@
         .excel-viewport { flex: 1; overflow: auto; background: white; }
         table { border-collapse: collapse; table-layout: fixed; width: max-content; }
         .col-A { width: 35px; } .col-B { width: 140px; } .col-C { width: 100px; } .col-D { width: 230px; } 
-        .col-E { width: 140px; } .col-F { width: 130px; } .col-G { width: 110px; } .col-H { width: 130px; }
+        .col-E { width: 150px; } .col-F { width: 130px; } .col-G { width: 110px; } .col-H { width: 130px; }
         .col-I { width: 100px; } .col-J { width: 110px; } .col-K { width: 130px; } .col-L { width: 220px; }
         .col-M { width: 130px; } .col-N { width: 130px; } .col-O { width: 110px; } .col-P { width: 260px; }
         .col-Q { width: 180px; } .col-R { width: 130px; }
@@ -20,7 +20,7 @@
         td:focus { border: 2px solid var(--excel-selected) !important; background: #fff; z-index: 10; position: relative; }
         .row-label { background: var(--header-bg); text-align: center; color: #666; width: 35px; border-right: 1px solid #c0c0c0; }
         .col-label { background: var(--header-bg); text-align: center; color: #666; height: 22px; }
-        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; }
+        .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; }
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; }
         .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; }
         .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
@@ -48,7 +48,7 @@
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
     let fullData = [];
-    let bookingMap = {}; // Mapa para DAE, Cliente y Destino por Booking
+    let masterMap = {}; 
 
     function init() {
         const head = document.getElementById('head-letters');
@@ -76,14 +76,21 @@
 
     async function buscarDatos() {
         const sem = document.getElementById('txtSemana').value;
-        const { data } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
-        fullData = data || [];
+        const { data, error } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
+        if (error) return console.error(error);
         
-        // Crear mapa de referencia por Booking para asegurar que DAE y Cliente aparezcan
-        bookingMap = {};
+        fullData = data || [];
+        masterMap = {};
+
+        // Lógica de vinculación: Escaneamos por Booking
         fullData.forEach(r => {
-            if (r.booking && !bookingMap[r.booking]) {
-                bookingMap[r.booking] = { dae: r.dae, cliente: r.cliente, destino: r.destino };
+            const bk = r.booking ? r.booking.trim() : null;
+            if (bk) {
+                if (!masterMap[bk]) masterMap[bk] = { dae: '', cliente: '', destino: '' };
+                // Solo actualizamos si el campo tiene contenido
+                if (r.dae && r.dae !== 'DAE') masterMap[bk].dae = r.dae;
+                if (r.cliente && r.cliente !== 'CLIENTE') masterMap[bk].cliente = r.cliente;
+                if (r.destino && r.destino !== 'DESTINO') masterMap[bk].destino = r.destino;
             }
         });
 
@@ -112,25 +119,28 @@
     function limpiarYTabular(datos) {
         for(let r=10; r<=60; r++) cols.forEach(c => setCelda(r, c, ''));
         if(!datos.length) return;
-        
-        const d = datos[0];
-        const masterInfo = bookingMap[d.booking] || {}; // Recuperar info del booking
+
+        // Info de Cabecera tomada del primer registro con datos
+        const primerBooking = datos[0].booking ? datos[0].booking.trim() : '';
+        const infoM = masterMap[primerBooking] || {};
 
         setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'I', document.getElementById('txtSemana').value);
-        setCelda(5, 'L', masterInfo.cliente || d.cliente); // Cliente en L5
+        setCelda(5, 'L', infoM.cliente || "S/N"); 
         setCelda(6, 'C', document.getElementById('selPuerto').value);
         setCelda(7, 'L', 'BANANAS');
-        setCelda(8, 'L', masterInfo.destino || d.destino); // Destino en L8
+        setCelda(8, 'L', infoM.destino || "S/N");
 
         datos.forEach((reg, i) => {
             const r = 10 + i;
-            const infoB = bookingMap[reg.booking] || {};
+            const bk = reg.booking ? reg.booking.trim() : '';
+            const master = masterMap[bk] || {};
+
             setCelda(r, 'A', i + 1); 
             setCelda(r, 'B', reg.contenedor); 
             setCelda(r, 'C', reg.cajas);
-            setCelda(r, 'D', infoB.dae || reg.dae); // DAE en Columna D
-            setCelda(r, 'E', reg.booking);
+            setCelda(r, 'D', master.dae || reg.dae); // Vinculación forzada por Booking
+            setCelda(r, 'E', bk);
             setCelda(r, 'F', reg.sello_nav); 
             setCelda(r, 'G', reg.sello_vent);
             setCelda(r, 'H', reg.sello_sticker); 
@@ -144,7 +154,6 @@
         });
     }
 
-    // Navegación Office 365
     function setupNavigation() {
         document.addEventListener('keydown', (e) => {
             const active = document.activeElement;
