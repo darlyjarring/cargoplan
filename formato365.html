@@ -11,6 +11,7 @@
         .excel-toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px 15px; display: flex; align-items: center; gap: 10px; }
         .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
         table { border-collapse: collapse; table-layout: fixed; width: max-content; background: white; }
+        /* Medidas exactas */
         .col-A { width: 35px; } .col-B { width: 130px; } .col-C { width: 85px; } .col-D { width: 230px; } .col-E { width: 145px; } .col-F { width: 135px; }
         .col-G { width: 110px; } .col-H { width: 140px; } .col-I { width: 105px; } .col-J { width: 110px; } .col-K { width: 135px; } .col-L { width: 205px; }
         .col-M { width: 125px; } .col-N { width: 120px; } .col-O { width: 95px; } .col-P { width: 370px; } .col-Q { width: 190px; } .col-R { width: 115px; }
@@ -28,16 +29,16 @@
 <body>
 
 <div class="excel-toolbar">
-    <input type="number" id="numSemana" class="form-control form-control-sm w-auto" placeholder="Semana (ej: 7)">
-    <button onclick="cargarBuques()" class="btn btn-sm btn-primary">Buscar Naves</button>
+    <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana (ej: 7)">
+    <button onclick="cargarBuques()" class="btn btn-sm btn-primary">Cargar Naves</button>
     
     <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()">
-        <option value="">2. Nave / Vapor / Barco</option>
+        <option value="">2. Seleccionar Nave</option>
     </select>
     <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="cargarDatosFinales()">
-        <option value="">3. Puerto / Terminal</option>
+        <option value="">3. Seleccionar Puerto</option>
     </select>
-    <span id="status" class="text-muted small"></span>
+    <span id="msg" class="small text-danger"></span>
 </div>
 
 <div class="excel-viewport">
@@ -48,12 +49,13 @@
 </div>
 
 <div class="tabs-footer" id="tabs-bar">
-    <div class="tab-item active">MASTER</div>
+    <div class="tab-item active" onclick="mostrarMaster()">MASTER</div>
 </div>
 
 <script>
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
     const cols = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
+    let globalData = [];
 
     function init() {
         const head = document.getElementById('head-letters');
@@ -80,8 +82,8 @@
     function dibujarEsqueleto() {
         setCelda(5, 'B', 'VESSEL:', true);
         setCelda(5, 'H', 'WEEK:', true);
-        setCelda(5, 'K', 'TYPE OF BOX (CLIENTE):', true);
-        setCelda(6, 'B', 'PORT (TERMINAL):', true);
+        setCelda(5, 'K', 'TYPE OF BOX:', true);
+        setCelda(6, 'B', 'PORT:', true);
         setCelda(7, 'K', 'COMMODITY:', true);
         setCelda(8, 'K', 'DESTINATION:', true);
 
@@ -92,8 +94,7 @@
             {c:'G', t:'Vent Seals', b:'var(--yellow-header)'}, {c:'H', t:'Sticker Seal', b:'var(--yellow-header)'},
             {c:'I', t:'TCI Seal', b:'var(--green-header)'}, {c:'J', t:'Security Seal', b:'var(--green-header)'},
             {c:'K', t:'Thermograph', b:'var(--green-header)'}, {c:'L', t:'Brand'},
-            {c:'M', t:'Observations'}, {c:'N', t:'Consolidation Date'}, {c:'O', t:'Producer Codes'},
-            {c:'P', t:'Producers'}, {c:'Q', t:'Farm'}, {c:'R', t:'Inspection'}
+            {c:'M', t:'Observations'}, {c:'N', t:'Consolidation Date'}
         ];
         h9.forEach(h => {
             const el = document.getElementById(`cell-9-${h.c}`);
@@ -102,93 +103,93 @@
     }
 
     async function cargarBuques() {
-        const sem = document.getElementById('numSemana').value;
+        const sem = document.getElementById('txtSemana').value;
+        if(!sem) return;
         const selB = document.getElementById('selBuque');
-        const status = document.getElementById('status');
         
-        if(!sem) return alert("Ingresa la semana");
-        status.innerText = "Buscando naves...";
-
-        // Buscamos naves en 'distribucion_diaria' (columna semana como número o texto)
-        const { data, error } = await _supabase
-            .from('distribucion_diaria')
-            .select('vapor, barco, nave')
-            .or(`semana.eq.${sem},semana.eq."${sem}"`);
-
+        // Consulta simple para evitar el error 400
+        const { data, error } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
+        
         if(error || !data.length) {
-            status.innerText = "No se encontraron datos.";
+            document.getElementById('msg').innerText = "No hay datos para esta semana.";
             return;
         }
 
         const unicos = [...new Set(data.map(i => i.vapor || i.barco || i.nave))].filter(Boolean);
-        selB.innerHTML = '<option value="">2. Nave / Vapor / Barco</option>';
+        selB.innerHTML = '<option value="">2. Seleccionar Nave</option>';
         unicos.forEach(b => selB.innerHTML += `<option value="${b}">${b}</option>`);
         selB.disabled = false;
-        status.innerText = "Naves cargadas.";
+        document.getElementById('msg').innerText = "";
     }
 
     async function cargarPuertos() {
-        const sem = document.getElementById('numSemana').value;
+        const sem = document.getElementById('txtSemana').value;
         const buq = document.getElementById('selBuque').value;
         const selP = document.getElementById('selPuerto');
-        
-        const { data } = await _supabase
-            .from('distribucion_diaria')
-            .select('puerto, terminal')
-            .or(`semana.eq.${sem},semana.eq."${sem}"`)
-            .or(`vapor.eq."${buq}",barco.eq."${buq}",nave.eq."${buq}"`);
 
-        const unicos = [...new Set(data.map(i => i.puerto || i.terminal))].filter(Boolean);
-        selP.innerHTML = '<option value="">3. Puerto / Terminal</option>';
+        const { data } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
+        const filtrado = data.filter(i => (i.vapor || i.barco || i.nave) === buq);
+        
+        const unicos = [...new Set(filtrado.map(i => i.puerto || i.terminal))].filter(Boolean);
+        selP.innerHTML = '<option value="">3. Seleccionar Puerto</option>';
         unicos.forEach(p => selP.innerHTML += `<option value="${p}">${p}</option>`);
         selP.disabled = false;
     }
 
     async function cargarDatosFinales() {
-        const sem = document.getElementById('numSemana').value;
+        const sem = document.getElementById('txtSemana').value;
         const buq = document.getElementById('selBuque').value;
         const pto = document.getElementById('selPuerto').value;
 
-        limpiarTabla();
-        const { data } = await _supabase
-            .from('distribucion_diaria')
-            .select('*')
-            .or(`semana.eq.${sem},semana.eq."${sem}"`)
-            .or(`vapor.eq."${buq}",barco.eq."${buq}",nave.eq."${buq}"`)
-            .or(`puerto.eq."${pto}",terminal.eq."${pto}"`);
+        const { data } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
+        globalData = data.filter(i => (i.vapor || i.barco || i.nave) === buq && (i.puerto || i.terminal) === pto);
 
-        if(data && data.length > 0) {
-            setCelda(5, 'C', buq);
-            setCelda(5, 'I', sem);
-            setCelda(5, 'L', data[0].cliente);
-            setCelda(6, 'C', pto);
-            setCelda(7, 'L', 'BANANAS');
-            setCelda(8, 'L', data[0].destino);
-
-            data.forEach((reg, i) => {
-                const r = 10 + i;
-                setCelda(r, 'A', i+1);
-                setCelda(r, 'B', reg.contenedor);
-                setCelda(r, 'C', reg.cajas);
-                setCelda(r, 'D', reg.dae);
-                setCelda(r, 'E', reg.booking);
-                setCelda(r, 'F', reg.sello_nav);
-                setCelda(r, 'G', reg.sello_vent);
-                setCelda(r, 'H', reg.sello_sticker);
-                setCelda(r, 'I', reg.sello_tci);
-                setCelda(r, 'J', reg.sello_sticker_nav);
-                setCelda(r, 'K', reg.termografo);
-                setCelda(r, 'L', reg.marca);
-                setCelda(r, 'N', reg.fecha);
-                setCelda(r, 'P', reg.productor);
-            });
-            generarHojas(data);
+        if(globalData.length > 0) {
+            mostrarMaster();
+            generarTabs(globalData);
         }
     }
 
-    function generarHojas(data) {
+    function mostrarMaster() {
+        limpiarTabla();
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        document.querySelector('.tab-item').classList.add('active');
+        
+        const d = globalData[0];
+        setCelda(5, 'C', document.getElementById('selBuque').value);
+        setCelda(5, 'I', document.getElementById('txtSemana').value);
+        setCelda(5, 'L', d.cliente);
+        setCelda(6, 'C', document.getElementById('selPuerto').value);
+        setCelda(7, 'L', 'BANANAS');
+        setCelda(8, 'L', d.destino);
+
+        rellenarGrid(globalData);
+    }
+
+    function rellenarGrid(filas) {
+        filas.forEach((reg, i) => {
+            const r = 10 + i;
+            setCelda(r, 'A', i+1);
+            setCelda(r, 'B', reg.contenedor);
+            setCelda(r, 'C', reg.cajas);
+            setCelda(r, 'D', reg.dae);
+            setCelda(r, 'E', reg.booking);
+            // Mapeos según memoria del sistema
+            setCelda(r, 'F', reg.sello_nav);
+            setCelda(r, 'G', reg.sello_vent);
+            setCelda(r, 'H', reg.sello_sticker);
+            setCelda(r, 'I', reg.sello_tci);
+            setCelda(r, 'J', reg.sello_sticker_nav);
+            setCelda(r, 'K', reg.termografo);
+            setCelda(r, 'L', reg.marca);
+            setCelda(r, 'N', reg.fecha);
+        });
+    }
+
+    function generarTabs(data) {
         const bar = document.getElementById('tabs-bar');
-        bar.innerHTML = '<div class="tab-item active" onclick="cargarDatosFinales()">MASTER</div>';
+        bar.innerHTML = '<div class="tab-item active" onclick="mostrarMaster()">MASTER</div>';
+        
         const grupos = {};
         data.forEach(r => {
             const key = `${r.destino || 'SD'} - ${r.marca || 'SM'}`;
@@ -204,23 +205,22 @@
                 document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
                 div.classList.add('active');
                 limpiarTabla();
-                rellenarHojas(grupos[key]);
+                rellenarGrid(grupos[key]);
             };
             bar.appendChild(div);
         });
     }
 
-    function rellenarHojas(filas) {
-        filas.forEach((reg, i) => {
-            const r = 10 + i;
-            setCelda(r, 'A', i+1); setCelda(r, 'B', reg.contenedor); setCelda(r, 'C', reg.cajas);
-            setCelda(r, 'E', reg.booking); setCelda(r, 'F', reg.sello_nav); setCelda(r, 'I', reg.sello_tci);
-            setCelda(r, 'L', reg.marca); setCelda(r, 'N', reg.fecha);
-        });
+    function limpiarTabla() {
+        for(let r=10; r<=100; r++) {
+            cols.forEach(c => { const el = document.getElementById(`cell-${r}-${c}`); if(el) el.innerText = ''; });
+        }
     }
 
-    function limpiarTabla() { for(let r=10; r<=100; r++) { cols.forEach(c => { const el = document.getElementById(`cell-${r}-${c}`); if(el) el.innerText = ''; }); } }
-    function setCelda(r, c, txt, bold=false) { const el = document.getElementById(`cell-${r}-${c}`); if(el) { el.innerText = txt || ''; if(bold) el.style.fontWeight = 'bold'; } }
+    function setCelda(r, c, txt, bold=false) {
+        const el = document.getElementById(`cell-${r}-${c}`);
+        if(el) { el.innerText = txt || ''; if(bold) el.style.fontWeight = 'bold'; }
+    }
 
     window.onload = init;
 </script>
