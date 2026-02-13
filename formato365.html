@@ -2,204 +2,193 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel 365 Online | Cargo Plan Master</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <title>COMERSUR - Cargo Plan Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
         :root {
-            --excel-green: #107c41;
-            --excel-border: #d1d1d1;
-            --header-bg: #f3f2f1;
+            --excel-border: #e1e1e1;
+            --excel-selected: #107c41;
+            --header-bg: #f8f9fa;
+        }
+        body { margin: 0; background: #f3f2f1; font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+        /* Contenedor de medidas exactas */
+        .excel-container { 
+            height: calc(100vh - 110px); 
+            overflow: auto; 
+            background: white; 
+            position: relative;
+            margin-top: 5px;
         }
 
-        body { background-color: #f3f2f1; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
-
-        /* Ribbon / Ribbon Bar */
-        .excel-header { background: var(--excel-green); color: white; padding: 5px 15px; display: flex; align-items: center; justify-content: space-between; }
-        .toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px; display: flex; gap: 15px; font-size: 13px; }
-
-        /* Grid Layout */
-        .spreadsheet-container { flex: 1; overflow: auto; background: white; position: relative; }
-        
         table { border-collapse: collapse; table-layout: fixed; width: max-content; }
         
-        /* Definición de Columnas (Medidas en mm convertidas a px aprox) */
-        .col-A { width: 35px; }   .col-B { width: 130px; }  .col-C { width: 85px; }
-        .col-D { width: 230px; }  .col-E { width: 145px; }  .col-F { width: 135px; }
-        .col-G { width: 110px; }  .col-H { width: 140px; }  .col-I { width: 105px; }
-        .col-J { width: 110px; }  .col-K { width: 135px; }  .col-L { width: 205px; }
-        .col-M { width: 125px; }  .col-N { width: 120px; }  .col-O { width: 95px; }
-        .col-P { width: 370px; }  .col-Q { width: 190px; }  .col-R { width: 115px; }
+        /* Definición de Columnas (convertido de mm a px) */
+        .col-A { width: 20px; }   .col-B { width: 66px; }   .col-C { width: 42px; }
+        .col-D { width: 115px; }  .col-E { width: 74px; }   .col-F { width: 67px; }
+        .col-G { width: 55px; }   .col-H { width: 70px; }   .col-I { width: 53px; }
+        .col-J { width: 55px; }   .col-K { width: 67px; }   .col-L { width: 104px; }
+        .col-M { width: 62px; }   .col-N { width: 60px; }   .col-O { width: 47px; }
+        .col-P { width: 185px; }  .col-Q { width: 95px; }   .col-R { width: 58px; }
 
-        td, th { border: 1px solid var(--excel-border); height: 26px; padding: 0 4px; font-size: 12px; vertical-align: middle; overflow: hidden; }
+        /* Altura de Filas */
+        tr.h-15 { height: 59px; } /* 15.75mm */
+        tr.h-63 { height: 238px; } /* 63mm - Área Logo */
+        tr.h-84 { height: 317px; } /* 84mm - Área Firmas/Resumen */
+        tr.h-19 { height: 74px; }  /* 19.5mm - Datos */
 
-        /* Definición de Filas Especiales */
-        tr.row-1-4 { height: 21px; } /* 15.75 mm aprox */
-        tr.row-5 { height: 84px; }   /* 63 mm */
-        tr.row-6 { height: 112px; }  /* 84 mm */
-        tr.row-default { height: 26px; } /* 19.5 mm */
+        td { 
+            border: 0.5px solid var(--excel-border); 
+            padding: 2px 5px; 
+            font-size: 11px; 
+            outline: none;
+            white-space: nowrap;
+            overflow: hidden;
+            position: relative;
+        }
 
-        /* Logo Montado */
-        #logo-overlay {
+        /* Comportamiento Excel */
+        td:focus { 
+            border: 2px solid var(--excel-selected) !important; 
+            z-index: 10; 
+        }
+
+        .excel-header { background: var(--header-bg); text-align: center; font-weight: bold; color: #444; border: 1px solid #ccc; }
+
+        /* Logo Flotante */
+        #logo-container {
             position: absolute;
             top: 10px;
-            left: 50px;
-            z-index: 100;
-            max-height: 80px;
-            pointer-events: none;
+            left: 25px;
+            z-index: 1000;
+            cursor: move;
         }
 
-        /* Tabs / Hojas */
-        .excel-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; align-items: center; padding: 0 10px; height: 35px; }
-        .sheet-tabs { display: flex; gap: 2px; height: 100%; }
+        .tabs-bar { 
+            height: 35px; 
+            background: #f3f2f1; 
+            border-top: 1px solid #ccc; 
+            display: flex; 
+            align-items: center; 
+            padding-left: 20px;
+        }
         .tab { 
-            background: white; border: 1px solid var(--excel-border); border-top: none; 
-            padding: 5px 20px; cursor: pointer; font-size: 12px; display: flex; 
-            align-items: center; height: 100%; color: #333;
+            padding: 5px 20px; 
+            background: white; 
+            border: 1px solid #ccc; 
+            border-bottom: none;
+            font-size: 12px; 
+            cursor: pointer;
+            margin-right: 2px;
         }
-        .tab.active { color: var(--excel-green); border-bottom: 3px solid var(--excel-green); font-weight: bold; }
-
-        .excel-header-cell { background: var(--header-bg); text-align: center; font-weight: normal; color: #666; }
+        .tab.active { border-bottom: 3px solid var(--excel-selected); font-weight: bold; }
     </style>
 </head>
 <body>
 
-<div class="excel-header">
-    <div><i class="bi bi-grid-3x3-gap-fill me-2"></i> Cargo Plan Master - Excel 365</div>
-    <div class="d-flex align-items:center">
-        <span class="me-3" id="info-vapor" style="font-size: 12px; opacity: 0.8;">Nave: ---</span>
-        <i class="bi bi-person-circle"></i>
+<div class="p-2 bg-white border-bottom d-flex align-items-center justify-content-between">
+    <div class="d-flex align-items-center">
+        <img src="https://img.icons8.com/color/48/000000/microsoft-excel-2019.png" width="24" class="me-2">
+        <span class="fw-bold">Cargo Plan - COMERSUR Cia. Ltda.</span>
     </div>
+    <div id="status" class="badge bg-success">Online</div>
 </div>
 
-<div class="toolbar">
-    <button class="btn btn-sm btn-outline-secondary border-0"><i class="bi bi-save me-1"></i> Guardar</button>
-    <button class="btn btn-sm btn-outline-secondary border-0"><i class="bi bi-file-earmark-excel me-1"></i> Exportar</button>
-    <div class="vr mx-2"></div>
-    <select id="selectSemana" class="form-select-sm border-secondary" onchange="cargarDatosExcel()">
-        <option value="">Seleccionar Semana</option>
-        <option value="7">Semana 07</option>
-    </select>
-</div>
+<div class="excel-container" id="scroll-area">
+    <div id="logo-container">
+        <img src="https://upload.wikimedia.org/wikipedia/commons/b/b4/Placeholder_logo.svg" id="main-logo" width="220">
+    </div>
 
-<div class="spreadsheet-container">
-    <img id="logo-overlay" src="https://via.placeholder.com/200x80?text=LOGO+COMERSUR" alt="Logo Comersur">
-    
-    <table id="main-grid">
-        <thead>
-            <tr class="excel-header-cell">
-                <th style="width: 30px;"></th> <th class="col-A">A</th><th class="col-B">B</th><th class="col-C">C</th>
-                <th class="col-D">D</th><th class="col-E">E</th><th class="col-F">F</th>
-                <th class="col-G">G</th><th class="col-H">H</th><th class="col-I">I</th>
-                <th class="col-J">J</th><th class="col-K">K</th><th class="col-L">L</th>
-                <th class="col-M">M</th><th class="col-N">N</th><th class="col-O">O</th>
-                <th class="col-P">P</th><th class="col-Q">Q</th><th class="col-R">R</th>
-            </tr>
-        </thead>
-        <tbody id="excel-body">
+    <table id="excel-table">
+        <thead id="table-head">
+            </thead>
+        <tbody id="table-body">
             </tbody>
     </table>
 </div>
 
-<div class="excel-footer">
-    <div class="sheet-tabs" id="sheet-container">
-        <div class="tab active">MASTER</div>
-    </div>
+<div class="tabs-bar" id="tabs-container">
+    <div class="tab active">MASTER</div>
 </div>
 
 <script>
-    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+    // Configuración de medidas y columnas
+    const columns = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R'];
+    
+    function initExcel() {
+        const head = document.getElementById('table-head');
+        const body = document.getElementById('table-body');
+        
+        // 1. Crear Cabeceras Letras
+        let headRow = `<tr class="excel-header"><td style="width:30px"></td>`;
+        columns.forEach(c => headRow += `<td class="col-${c}">${c}</td>`);
+        head.innerHTML = headRow + `</tr>`;
 
-    document.addEventListener('DOMContentLoaded', () => {
-        initGrid();
-    });
-
-    function initGrid() {
-        const body = document.getElementById('excel-body');
-        body.innerHTML = '';
-
-        for (let i = 1; i <= 50; i++) {
+        // 2. Generar Filas con alturas específicas
+        for (let i = 1; i <= 100; i++) {
             const tr = document.createElement('tr');
             
-            // Clases de altura según instrucción
-            if (i <= 4) tr.className = 'row-1-4';
-            else if (i === 5) tr.className = 'row-5';
-            else if (i === 6) tr.className = 'row-6';
-            else tr.className = 'row-default';
+            // Asignar clases de altura según pedido
+            if (i <= 4) tr.className = 'h-15';
+            else if (i === 5) tr.className = 'h-63'; // Fila logo/títulos
+            else if (i === 6) tr.className = 'h-84'; // Fila firmas
+            else tr.className = 'h-19';
 
-            // Celda de número de fila
-            let rowNumTd = `<td class="excel-header-cell">${i}</td>`;
-            let cells = '';
-            for (let j = 0; j < 18; j++) {
-                cells += `<td contenteditable="true" id="cell-${i}-${String.fromCharCode(65+j)}"></td>`;
-            }
-            tr.innerHTML = rowNumTd + cells;
+            let rowHtml = `<td class="excel-header">${i}</td>`;
+            columns.forEach(col => {
+                rowHtml += `<td contenteditable="true" data-row="${i}" data-col="${col}" tabindex="0"></td>`;
+            });
+            tr.innerHTML = rowHtml;
             body.appendChild(tr);
         }
+        
+        setupNavigation();
     }
 
-    async function cargarDatosExcel() {
-        const sem = document.getElementById('selectSemana').value;
-        if(!sem) return;
+    // Lógica de navegación tipo Excel
+    function setupNavigation() {
+        document.addEventListener('keydown', (e) => {
+            const active = document.activeElement;
+            if (active.tagName !== 'TD') return;
 
-        // Limpiar Hojas previas
-        const sheetContainer = document.getElementById('sheet-container');
-        sheetContainer.innerHTML = '<div class="tab active" onclick="switchSheet(\'MASTER\')">MASTER</div>';
+            const row = parseInt(active.dataset.row);
+            const colIdx = columns.indexOf(active.dataset.col);
 
-        const { data, error } = await _supabase
-            .from('distribucion_diaria')
-            .select('*')
-            .eq('semana', sem);
+            let next;
+            switch(e.key) {
+                case 'ArrowRight': next = document.querySelector(`[data-row="${row}"][data-col="${columns[colIdx+1]}"]`); break;
+                case 'ArrowLeft': next = document.querySelector(`[data-row="${row}"][data-col="${columns[colIdx-1]}"]`); break;
+                case 'ArrowDown': next = document.querySelector(`[data-row="${row+1}"][data-col="${columns[colIdx]}"]`); break;
+                case 'ArrowUp': next = document.querySelector(`[data-row="${row-1}"][data-col="${columns[colIdx]}"]`); break;
+                case 'Enter': 
+                    e.preventDefault();
+                    next = document.querySelector(`[data-row="${row+1}"][data-col="${columns[colIdx]}"]`);
+                    break;
+            }
 
-        if(data && data.length > 0) {
-            document.getElementById('info-vapor').innerText = `Nave: ${data[0].vapor || '---'}`;
-            
-            // Lógica de segmentación para hojas (Destino - Marca)
-            const hojasSet = new Set();
-            data.forEach(reg => {
-                if(reg.destino && reg.marca) {
-                    hojasSet.add(`${reg.destino.split('-')[0].trim()} - ${reg.marca}`);
-                }
-            });
+            if (next) next.focus();
+        });
 
-            hojasSet.forEach(hojaName => {
-                const tab = document.createElement('div');
-                tab.className = 'tab';
-                tab.innerText = hojaName;
-                tab.onclick = () => switchSheet(hojaName);
-                sheetContainer.appendChild(tab);
-            });
-
-            rellenarMaster(data);
-        }
-    }
-
-    function rellenarMaster(data) {
-        // Ejemplo de rellenado dinámico en la grilla tipo Excel
-        // Empezando desde fila 10 según imagen adjunta
-        data.forEach((reg, index) => {
-            const row = 10 + index;
-            if(document.getElementById(`cell-${row}-B`)) {
-                document.getElementById(`cell-${row}-B`).innerText = reg.contenedor || '';
-                document.getElementById(`cell-${row}-C`).innerText = reg.cajas || '';
-                document.getElementById(`cell-${row}-D`).innerText = reg.booking || '';
-                document.getElementById(`cell-${row}-E`).innerText = reg.sello_nav || '';
-                document.getElementById(`cell-${row}-I`).innerText = reg.termografo || '';
-                document.getElementById(`cell-${row}-L`).innerText = reg.marca || '';
+        // Lógica Doble Enter para salir (Blur)
+        let lastEnter = 0;
+        document.addEventListener('keypress', (e) => {
+            if(e.key === 'Enter') {
+                let now = Date.now();
+                if(now - lastEnter < 300) document.activeElement.blur();
+                lastEnter = now;
             }
         });
     }
 
-    function switchSheet(name) {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        event.target.classList.add('active');
-        console.log("Cambiando a hoja:", name);
-        // Aquí filtrarías los datos para mostrar solo los de esa Hoja
+    // Función para posicionar el logo según parámetro (mm)
+    function posicionarLogo(topMm, leftMm) {
+        const logo = document.getElementById('logo-container');
+        logo.style.top = (topMm * 3.78) + 'px';
+        logo.style.left = (leftMm * 3.78) + 'px';
     }
-</script>
 
+    window.onload = initExcel;
+</script>
 </body>
 </html>
