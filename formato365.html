@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel 365 Online | Cargo Plan Master</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
+    <style>
+        :root {
+            --excel-green: #107c41;
+            --excel-border: #d1d1d1;
+            --header-bg: #f3f2f1;
+        }
+
+        body { background-color: #f3f2f1; font-family: 'Segoe UI', Arial, sans-serif; overflow: hidden; height: 100vh; display: flex; flex-direction: column; }
+
+        /* Ribbon / Ribbon Bar */
+        .excel-header { background: var(--excel-green); color: white; padding: 5px 15px; display: flex; align-items: center; justify-content: space-between; }
+        .toolbar { background: white; border-bottom: 1px solid var(--excel-border); padding: 8px; display: flex; gap: 15px; font-size: 13px; }
+
+        /* Grid Layout */
+        .spreadsheet-container { flex: 1; overflow: auto; background: white; position: relative; }
+        
+        table { border-collapse: collapse; table-layout: fixed; width: max-content; }
+        
+        /* Definición de Columnas (Medidas en mm convertidas a px aprox) */
+        .col-A { width: 35px; }   .col-B { width: 130px; }  .col-C { width: 85px; }
+        .col-D { width: 230px; }  .col-E { width: 145px; }  .col-F { width: 135px; }
+        .col-G { width: 110px; }  .col-H { width: 140px; }  .col-I { width: 105px; }
+        .col-J { width: 110px; }  .col-K { width: 135px; }  .col-L { width: 205px; }
+        .col-M { width: 125px; }  .col-N { width: 120px; }  .col-O { width: 95px; }
+        .col-P { width: 370px; }  .col-Q { width: 190px; }  .col-R { width: 115px; }
+
+        td, th { border: 1px solid var(--excel-border); height: 26px; padding: 0 4px; font-size: 12px; vertical-align: middle; overflow: hidden; }
+
+        /* Definición de Filas Especiales */
+        tr.row-1-4 { height: 21px; } /* 15.75 mm aprox */
+        tr.row-5 { height: 84px; }   /* 63 mm */
+        tr.row-6 { height: 112px; }  /* 84 mm */
+        tr.row-default { height: 26px; } /* 19.5 mm */
+
+        /* Logo Montado */
+        #logo-overlay {
+            position: absolute;
+            top: 10px;
+            left: 50px;
+            z-index: 100;
+            max-height: 80px;
+            pointer-events: none;
+        }
+
+        /* Tabs / Hojas */
+        .excel-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; align-items: center; padding: 0 10px; height: 35px; }
+        .sheet-tabs { display: flex; gap: 2px; height: 100%; }
+        .tab { 
+            background: white; border: 1px solid var(--excel-border); border-top: none; 
+            padding: 5px 20px; cursor: pointer; font-size: 12px; display: flex; 
+            align-items: center; height: 100%; color: #333;
+        }
+        .tab.active { color: var(--excel-green); border-bottom: 3px solid var(--excel-green); font-weight: bold; }
+
+        .excel-header-cell { background: var(--header-bg); text-align: center; font-weight: normal; color: #666; }
+    </style>
+</head>
+<body>
+
+<div class="excel-header">
+    <div><i class="bi bi-grid-3x3-gap-fill me-2"></i> Cargo Plan Master - Excel 365</div>
+    <div class="d-flex align-items:center">
+        <span class="me-3" id="info-vapor" style="font-size: 12px; opacity: 0.8;">Nave: ---</span>
+        <i class="bi bi-person-circle"></i>
+    </div>
+</div>
+
+<div class="toolbar">
+    <button class="btn btn-sm btn-outline-secondary border-0"><i class="bi bi-save me-1"></i> Guardar</button>
+    <button class="btn btn-sm btn-outline-secondary border-0"><i class="bi bi-file-earmark-excel me-1"></i> Exportar</button>
+    <div class="vr mx-2"></div>
+    <select id="selectSemana" class="form-select-sm border-secondary" onchange="cargarDatosExcel()">
+        <option value="">Seleccionar Semana</option>
+        <option value="7">Semana 07</option>
+    </select>
+</div>
+
+<div class="spreadsheet-container">
+    <img id="logo-overlay" src="https://via.placeholder.com/200x80?text=LOGO+COMERSUR" alt="Logo Comersur">
+    
+    <table id="main-grid">
+        <thead>
+            <tr class="excel-header-cell">
+                <th style="width: 30px;"></th> <th class="col-A">A</th><th class="col-B">B</th><th class="col-C">C</th>
+                <th class="col-D">D</th><th class="col-E">E</th><th class="col-F">F</th>
+                <th class="col-G">G</th><th class="col-H">H</th><th class="col-I">I</th>
+                <th class="col-J">J</th><th class="col-K">K</th><th class="col-L">L</th>
+                <th class="col-M">M</th><th class="col-N">N</th><th class="col-O">O</th>
+                <th class="col-P">P</th><th class="col-Q">Q</th><th class="col-R">R</th>
+            </tr>
+        </thead>
+        <tbody id="excel-body">
+            </tbody>
+    </table>
+</div>
+
+<div class="excel-footer">
+    <div class="sheet-tabs" id="sheet-container">
+        <div class="tab active">MASTER</div>
+    </div>
+</div>
+
+<script>
+    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        initGrid();
+    });
+
+    function initGrid() {
+        const body = document.getElementById('excel-body');
+        body.innerHTML = '';
+
+        for (let i = 1; i <= 50; i++) {
+            const tr = document.createElement('tr');
+            
+            // Clases de altura según instrucción
+            if (i <= 4) tr.className = 'row-1-4';
+            else if (i === 5) tr.className = 'row-5';
+            else if (i === 6) tr.className = 'row-6';
+            else tr.className = 'row-default';
+
+            // Celda de número de fila
+            let rowNumTd = `<td class="excel-header-cell">${i}</td>`;
+            let cells = '';
+            for (let j = 0; j < 18; j++) {
+                cells += `<td contenteditable="true" id="cell-${i}-${String.fromCharCode(65+j)}"></td>`;
+            }
+            tr.innerHTML = rowNumTd + cells;
+            body.appendChild(tr);
+        }
+    }
+
+    async function cargarDatosExcel() {
+        const sem = document.getElementById('selectSemana').value;
+        if(!sem) return;
+
+        // Limpiar Hojas previas
+        const sheetContainer = document.getElementById('sheet-container');
+        sheetContainer.innerHTML = '<div class="tab active" onclick="switchSheet(\'MASTER\')">MASTER</div>';
+
+        const { data, error } = await _supabase
+            .from('distribucion_diaria')
+            .select('*')
+            .eq('semana', sem);
+
+        if(data && data.length > 0) {
+            document.getElementById('info-vapor').innerText = `Nave: ${data[0].vapor || '---'}`;
+            
+            // Lógica de segmentación para hojas (Destino - Marca)
+            const hojasSet = new Set();
+            data.forEach(reg => {
+                if(reg.destino && reg.marca) {
+                    hojasSet.add(`${reg.destino.split('-')[0].trim()} - ${reg.marca}`);
+                }
+            });
+
+            hojasSet.forEach(hojaName => {
+                const tab = document.createElement('div');
+                tab.className = 'tab';
+                tab.innerText = hojaName;
+                tab.onclick = () => switchSheet(hojaName);
+                sheetContainer.appendChild(tab);
+            });
+
+            rellenarMaster(data);
+        }
+    }
+
+    function rellenarMaster(data) {
+        // Ejemplo de rellenado dinámico en la grilla tipo Excel
+        // Empezando desde fila 10 según imagen adjunta
+        data.forEach((reg, index) => {
+            const row = 10 + index;
+            if(document.getElementById(`cell-${row}-B`)) {
+                document.getElementById(`cell-${row}-B`).innerText = reg.contenedor || '';
+                document.getElementById(`cell-${row}-C`).innerText = reg.cajas || '';
+                document.getElementById(`cell-${row}-D`).innerText = reg.booking || '';
+                document.getElementById(`cell-${row}-E`).innerText = reg.sello_nav || '';
+                document.getElementById(`cell-${row}-I`).innerText = reg.termografo || '';
+                document.getElementById(`cell-${row}-L`).innerText = reg.marca || '';
+            }
+        });
+    }
+
+    function switchSheet(name) {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        event.target.classList.add('active');
+        console.log("Cambiando a hoja:", name);
+        // Aquí filtrarías los datos para mostrar solo los de esa Hoja
+    }
+</script>
+
+</body>
+</html>
