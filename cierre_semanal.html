@@ -2,141 +2,142 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>COMERSUR | Cierre Semanal (Contenedores vs DAE)</title>
+    <title>COMERSUR | Cierre Semanal Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f0f2f5; font-family: 'Segoe UI', sans-serif; }
-        .header-cierre { background: #107c41; color: white; padding: 20px; border-radius: 8px 8px 0 0; }
-        .card-main { border: none; box-shadow: 0 10px 30px rgba(0,0,0,0.1); border-radius: 8px; margin-top: 20px; }
-        .table thead { background: #f8f9fa; }
-        .badge-error { background: #dc3545; color: white; }
-        .badge-success { background: #28a745; color: white; }
-        .diff-text { font-weight: bold; color: #d63031; }
+        :root { --primary-blue: #003366; --excel-green: #107c41; }
+        body { background: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+        .card-cierre { border: none; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); overflow: hidden; }
+        .header-cierre { background: var(--primary-blue); color: white; padding: 25px; }
+        .table thead { background: #e9ecef; color: #495057; text-transform: uppercase; font-size: 0.8rem; }
+        .text-real { color: var(--excel-green); font-weight: bold; font-size: 1.1rem; }
+        .badge-status { padding: 6px 12px; border-radius: 20px; font-weight: 600; }
+        .bg-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+        .bg-match { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
     </style>
 </head>
 <body>
 
-<div class="container mt-4">
-    <div class="card card-main">
-        <div class="header-cierre d-flex justify-content-between align-items-center">
-            <div>
-                <h4 class="mb-0">CIERRE DE GESTIÓN SEMANAL</h4>
-                <p class="mb-0 small">Cuadre de Contenedores: Cargo Plan vs. Reporte DAEs</p>
-            </div>
-            <div class="d-flex gap-2">
-                <input type="number" id="inputSemana" class="form-control form-control-sm" placeholder="Semana">
-                <button onclick="analizarCuadre()" class="btn btn-sm btn-light fw-bold">Analizar</button>
+<div class="container py-5">
+    <div class="card card-cierre">
+        <div class="header-cierre">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <h3 class="mb-1">CIERRE Y CUADRE SEMANAL</h3>
+                    <p class="mb-0 opacity-75">Sincronización de Gestión (DAEs) vs. Realidad (Cargo Plan)</p>
+                </div>
+                <div class="col-md-6 text-end d-flex gap-2 justify-content-end">
+                    <input type="number" id="semInput" class="form-control w-25" placeholder="Semana">
+                    <button onclick="ejecutarAnalisis()" class="btn btn-light fw-bold text-primary">Analizar Gestión</button>
+                </div>
             </div>
         </div>
 
-        <div class="p-4">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>BOOKING</th>
-                        <th>DAE</th>
-                        <th>CLIENTE</th>
-                        <th class="text-center">GESTIONADO (Cant.)</th>
-                        <th class="text-center">CARGADO (Unidades)</th>
-                        <th class="text-center">DIFERENCIA</th>
-                        <th class="text-center">ESTADO</th>
-                    </tr>
-                </thead>
-                <tbody id="resumen-cierre">
-                    </tbody>
-            </table>
-
-            <div class="d-flex justify-content-end mt-4">
-                <button id="btnFinalizar" onclick="ejecutarSincronizacion()" class="btn btn-success d-none shadow-sm">
-                    Confirmar Cierre y Actualizar Gestión (DAEs)
-                </button>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead>
+                        <tr>
+                            <th class="ps-4">Booking</th>
+                            <th>Cliente / Destino</th>
+                            <th>DAE</th>
+                            <th class="text-center">Planificado (Gestión)</th>
+                            <th class="text-center">Real (Cargo Plan)</th>
+                            <th class="text-center">Diferencia</th>
+                            <th class="text-center pe-4">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cierreBody">
+                        </tbody>
+                </table>
             </div>
+        </div>
+        
+        <div class="card-footer bg-white border-top-0 p-4 text-end">
+            <button id="btnSync" onclick="sincronizarBaseGestion()" class="btn btn-success btn-lg d-none shadow">
+                Actualizar Gestión y Cerrar Semana
+            </button>
         </div>
     </div>
 </div>
 
 <script>
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
-    let listaParaActualizar = [];
+    let dataDeCierre = [];
 
-    async function analizarCuadre() {
-        const sem = document.getElementById('inputSemana').value;
-        if(!sem) return alert("Por favor, ingrese la semana.");
+    async function ejecutarAnalisis() {
+        const sem = document.getElementById('semInput').value;
+        if(!sem) return alert("Ingrese la semana para procesar el cierre.");
 
-        // 1. Obtener contenedores reales del Cargo Plan
+        // 1. Contar contenedores reales en Cargo Plan (distribucion_diaria)
         const { data: cargoPlan } = await _supabase
             .from('distribucion_diaria')
-            .select('booking, contenedor')
+            .select('booking')
             .eq('semana', sem);
 
-        if(!cargoPlan) return alert("No hay datos en esta semana.");
-
-        // Contar unidades reales por booking
         const conteoReal = {};
-        cargoPlan.forEach(c => {
-            const bk = c.booking?.trim();
+        cargoPlan.forEach(row => {
+            const bk = row.booking?.trim();
             if(bk) conteoReal[bk] = (conteoReal[bk] || 0) + 1;
         });
 
-        // 2. Obtener lo planificado en la base de DAEs
-        const bookingsUnicos = Object.keys(conteoReal);
-        const { data: daesPlan } = await _supabase
+        // 2. Obtener datos de la tabla de DAES (reporte_daes)
+        const { data: gestionData } = await _supabase
             .from('reporte_daes')
-            .select('booking, dae, cliente, cant, cont') // Usando tus campos cant/cont
-            .in('booking', bookingsUnicos);
+            .select('booking, dae, cliente, destino, contenedor'); // contenedor es la CANTIDAD planificada
 
-        const tbody = document.getElementById('resumen-cierre');
+        const tbody = document.getElementById('cierreBody');
         tbody.innerHTML = '';
-        listaParaActualizar = [];
+        dataDeCierre = [];
 
-        daesPlan.forEach(d => {
+        // Filtrar solo los bookings que aparecen en la semana analizada
+        const filtrado = gestionData.filter(g => conteoReal[g.booking?.trim()]);
+
+        filtrado.forEach(d => {
             const bk = d.booking.trim();
             const real = conteoReal[bk] || 0;
-            const plan = parseInt(d.cant || d.cont || 0); // Toma de cant o cont según tengas la base
+            const plan = parseInt(d.contenedor || 0); // Tu campo d.contenedor
             const dif = plan - real;
-            const esCorrecto = dif === 0;
+            const esIgual = dif === 0;
 
-            listaParaActualizar.push({ booking: bk, cantidadReal: real });
+            dataDeCierre.push({ booking: bk, valorReal: real });
 
             tbody.innerHTML += `
                 <tr>
-                    <td><strong>${bk}</strong></td>
-                    <td>${d.dae || 'Pnd.'}</td>
-                    <td>${d.cliente || ''}</td>
-                    <td class="text-center">${plan}</td>
-                    <td class="text-center fw-bold text-primary">${real}</td>
-                    <td class="text-center ${!esCorrecto ? 'diff-text' : ''}">${dif}</td>
-                    <td class="text-center">
-                        <span class="badge ${esCorrecto ? 'badge-success' : 'badge-error'}">
-                            ${esCorrecto ? 'OK' : 'AJUSTE REQUERIDO'}
+                    <td class="ps-4 fw-bold text-dark">${bk}</td>
+                    <td>${d.cliente}<br><small class="text-muted">${d.destino || ''}</small></td>
+                    <td><code class="text-primary">${d.dae || 'Pendiente'}</code></td>
+                    <td class="text-center fw-bold">${plan}</td>
+                    <td class="text-center text-real">${real}</td>
+                    <td class="text-center ${!esIgual ? 'text-danger fw-bold' : ''}">${dif}</td>
+                    <td class="text-center pe-4">
+                        <span class="badge-status ${esIgual ? 'bg-match' : 'bg-pending'}">
+                            ${esIgual ? '✓ CUADRADO' : '⚠ AJUSTAR'}
                         </span>
                     </td>
                 </tr>
             `;
         });
 
-        document.getElementById('btnFinalizar').classList.remove('d-none');
+        if(filtrado.length > 0) document.getElementById('btnSync').classList.remove('d-none');
     }
 
-    async function ejecutarSincronizacion() {
-        if(!confirm("¿Desea ajustar la cantidad de contenedores en la tabla DAEs para que coincida con el Cargo Plan?")) return;
+    async function sincronizarBaseGestion() {
+        if(!confirm("¿Desea cerrar la semana? Esto igualará el campo 'contenedor' en la gestión con la cantidad real de contenedores del Cargo Plan.")) return;
 
         try {
-            for (let item of listaParaActualizar) {
-                // Actualiza la planificación (campo cant/cont) con lo que realmente se cargó
+            for (let item of dataDeCierre) {
+                // Sincronizamos el campo d.contenedor con la realidad física
                 await _supabase
                     .from('reporte_daes')
-                    .update({ 
-                        cant: item.cantidadReal,
-                        cont: item.cantidadReal 
-                    })
+                    .update({ contenedor: item.valorReal }) 
                     .eq('booking', item.booking);
             }
-            alert("Semana cerrada. Gestión de DAEs sincronizada con éxito.");
-            analizarCuadre();
+            alert("Gestión actualizada correctamente. La semana ha quedado cuadrada.");
+            ejecutarAnalisis();
         } catch (e) {
-            alert("Error en la sincronización.");
+            alert("Error al sincronizar datos.");
         }
     }
 </script>
