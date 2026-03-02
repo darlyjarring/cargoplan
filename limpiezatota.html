@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>COMERSUR | Limpieza de Base de Datos</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background: #f4f7f6; font-family: 'Segoe UI', sans-serif; padding: 50px; }
+        .card { border: none; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        .btn-danger { background-color: #d9534f; border: none; padding: 10px 25px; font-weight: bold; }
+        .btn-danger:hover { background-color: #c9302c; }
+        .warning-text { color: #856404; background-color: #fff3cd; border: 1px solid #ffeeba; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 0.9rem; }
+        .status-log { max-height: 200px; overflow-y: auto; background: #eee; padding: 10px; border-radius: 5px; font-family: monospace; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card p-4">
+                <h3 class="text-center mb-4">Borrado de Datos Semanales</h3>
+                
+                <div class="warning-text">
+                    <strong>¡ATENCIÓN!</strong> Esta acción eliminará permanentemente todos los registros (Cargo Plan, Sellos y DAES) de la semana seleccionada para la empresa indicada. 
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Número de Semana:</label>
+                    <input type="number" id="numSemana" class="form-control" placeholder="Ej: 8">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Empresa:</label>
+                    <select id="selEmpresa" class="form-select">
+                        <option value="">Seleccione Empresa...</option>
+                        <option value="COMERSUR">COMERSUR</option>
+                        <option value="BANANAS">BANANAS S.A.</option>
+                    </select>
+                </div>
+
+                <button onclick="confirmarBorrado()" class="btn btn-danger w-100">ELIMINAR DATOS DE LA SEMANA</button>
+
+                <div class="mt-4">
+                    <p class="small text-muted mb-1">Registro de actividad:</p>
+                    <div id="log" class="status-log">Esperando acción...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Configuración de Supabase
+    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+
+    async function confirmarBorrado() {
+        const sem = document.getElementById('numSemana').value;
+        const emp = document.getElementById('selEmpresa').value;
+
+        if (!sem || !emp) {
+            alert("Por favor ingrese la semana y seleccione la empresa.");
+            return;
+        }
+
+        const confirmacion = confirm(`¿Está COMPLETAMENTE SEGURO de borrar toda la información de la SEMANA ${sem} para ${emp}?\n\nEsta acción no se puede deshacer.`);
+        
+        if (confirmacion) {
+            ejecutarBorrado(sem, emp);
+        }
+    }
+
+    function addLog(msg) {
+        const log = document.getElementById('log');
+        log.innerHTML += `<div>> ${msg}</div>`;
+        log.scrollTop = log.scrollHeight;
+    }
+
+    async function ejecutarBorrado(semana, empresa) {
+        addLog(`Iniciando borrado para Semana ${semana} - ${empresa}...`);
+
+        try {
+            // 1. Borrar de reporte_daes (Filtrando por semana y empresa)
+            const { error: errorDaes } = await _supabase
+                .from('reporte_daes')
+                .delete()
+                .eq('semana', semana)
+                .eq('empresa', empresa);
+
+            if (errorDaes) throw errorDaes;
+            addLog(`✓ Registros eliminados en 'reporte_daes'.`);
+
+            // 2. Borrar de distribucion_diaria (Filtrando por semana)
+            // Nota: Si en distribucion_diaria no tienes columna 'empresa', 
+            // se borran todos los del cargo plan de esa semana para evitar duplicados.
+            const { error: errorDist } = await _supabase
+                .from('distribucion_diaria')
+                .delete()
+                .eq('semana', semana);
+
+            if (errorDist) throw errorDist;
+            addLog(`✓ Registros eliminados en 'distribucion_diaria'.`);
+
+            addLog(`<strong>PROCESO COMPLETADO CON ÉXITO.</strong>`);
+            alert(`La semana ${semana} de ${empresa} ha sido limpiada. Ya puede subir los nuevos archivos.`);
+            
+        } catch (err) {
+            console.error(err);
+            addLog(`❌ ERROR: ${err.message}`);
+            alert("Ocurrió un error durante el borrado. Revise la consola.");
+        }
+    }
+</script>
+
+</body>
+</html>
