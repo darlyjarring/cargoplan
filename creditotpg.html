@@ -1,135 +1,60 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <title>COMERSUR | Gestión Crédito TPG</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        body { background: #f8f9fa; font-family: 'Segoe UI', sans-serif; padding: 30px; }
-        .card { border-radius: 12px; border: none; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
-        .table-container { background: white; border-radius: 10px; padding: 20px; }
-        .tpg-badge { background: #107c41; color: white; padding: 4px 8px; border-radius: 5px; font-size: 10px; font-weight: bold; }
-        .input-credito { border: 1px solid #ced4da; font-size: 13px; padding: 4px 8px; width: 100%; border-radius: 4px; }
-        .input-credito:focus { border-color: #107c41; outline: none; box-shadow: 0 0 5px rgba(16, 124, 65, 0.2); }
-    </style>
-</head>
-<body>
-
-<div class="container-fluid">
-    <div class="card p-4">
-        <h4 class="mb-4">Asignación de Créditos TPG para AISV</h4>
-        
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <label class="form-label small">Semana</label>
-                <input type="number" id="txtSemana" class="form-control form-control-sm" placeholder="Ej: 8">
-            </div>
-            <div class="col-md-3">
-                <label class="form-label small">Empresa</label>
-                <select id="selEmpresa" class="form-select form-select-sm">
-                    <option value="COMERSUR">COMERSUR</option>
-                    <option value="BANANAS">BANANAS S.A.</option>
-                </select>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button onclick="cargarDaesTPG()" class="btn btn-primary btn-sm w-100">Consultar TPG</button>
-            </div>
-        </div>
-
-        <div class="table-container">
-            <table class="table table-sm table-hover">
-                <thead class="table-light">
-                    <tr>
-                        <th>Booking</th>
-                        <th>DAE</th>
-                        <th>Terminal</th>
-                        <th>Destino</th>
-                        <th style="width: 250px;">Código Crédito TPG</th>
-                        <th>Acción</th>
-                    </tr>
-                </thead>
-                <tbody id="listaDaes">
-                    </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-
-<script>
-    const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
-
-    // Lista de terminales que requieren crédito TPG según tu instrucción
-    const terminalesTPG = ["INARPI", "TPG", "INARPI /TPG", "INARPI S.A - TPG-4"];
-
-    async function cargarDaesTPG() {
+async function cargarDaesTPG() {
         const sem = document.getElementById('txtSemana').value;
         const emp = document.getElementById('selEmpresa').value;
         const tbody = document.getElementById('listaDaes');
         
         if(!sem) return alert("Ingrese semana");
 
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Buscando DAES con terminal TPG...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-primary">Buscando DAES en terminales TPG...</td></tr>';
 
-        // Consultamos reporte_daes filtrando por empresa y semana
+        // 1. Consultamos TODAS las DAES de esa semana y empresa
         const { data, error } = await _supabase
             .from('reporte_daes')
             .select('*')
             .eq('semana', sem)
             .eq('empresa', emp);
 
-        if (error) return console.error(error);
+        if (error) {
+            tbody.innerHTML = `<tr><td colspan="6" class="text-danger">Error: ${error.message}</td></tr>`;
+            return;
+        }
 
-        // Filtramos solo las que tengan las terminales requeridas
+        // 2. Filtro Ultra-Flexible para detectar TPG / INARPI
+        // Esto detectará: "TPG", "INARPI", "INARPI / TPG", "INARPI/TPG", etc.
         const filtrados = data.filter(d => {
-            const term = (d.puerto || "").toUpperCase().trim();
-            return terminalesTPG.some(t => term.includes(t.toUpperCase()));
+            const termOriginal = (d.puerto || "").toUpperCase();
+            // Quitamos espacios para comparar: "INARPI / TPG" -> "INARPI/TPG"
+            const termLimpia = termOriginal.replace(/\s+/g, ''); 
+            
+            return termLimpia.includes("TPG") || 
+                   termLimpia.includes("INARPI") || 
+                   termLimpia.includes("TPG-4");
         });
 
         tbody.innerHTML = '';
 
         if(filtrados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No se encontraron DAES para terminales TPG en esta semana.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No se encontraron DAES vinculadas a TPG/INARPI para esta semana.</td></tr>';
             return;
         }
 
+        // 3. Renderizar resultados
         filtrados.forEach(d => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="align-middle">${d.booking}</td>
+                <td class="align-middle fw-bold">${d.booking}</td>
                 <td class="align-middle">${d.dae}</td>
-                <td class="align-middle"><span class="tpg-badge">${d.puerto}</span></td>
-                <td class="align-middle">${d.puerto_destino || d.destino || ''}</td>
+                <td class="align-middle"><span class="badge bg-dark">${d.puerto}</span></td>
+                <td class="align-middle text-muted">${d.puerto_destino || d.destino || ''}</td>
                 <td class="align-middle">
-                    <input type="text" id="credito-${d.id}" class="input-credito" 
-                           value="${d.credito_tpg || ''}" placeholder="Ingrese código de crédito...">
+                    <input type="text" id="credito-${d.id}" class="form-control form-control-sm" 
+                           style="border: 2px solid #107c41;"
+                           value="${d.credito_tpg || ''}" placeholder="Escriba el Crédito TPG...">
                 </td>
-                <td class="align-middle">
-                    <button onclick="guardarCredito(${d.id})" class="btn btn-success btn-sm">Guardar</button>
+                <td class="align-middle text-center">
+                    <button onclick="guardarCredito(${d.id})" class="btn btn-success btn-sm px-3">Guardar</button>
                 </td>
             `;
             tbody.appendChild(tr);
         });
     }
-
-    async function guardarCredito(id) {
-        const valor = document.getElementById(`credito-${id}`).value;
-
-        const { error } = await _supabase
-            .from('reporte_daes')
-            .update({ credito_tpg: valor })
-            .eq('id', id);
-
-        if (error) {
-            alert("Error al guardar: " + error.message);
-        } else {
-            // Animación simple de éxito
-            const input = document.getElementById(`credito-${id}`);
-            input.style.backgroundColor = "#d4edda";
-            setTimeout(() => input.style.backgroundColor = "white", 1000);
-        }
-    }
-</script>
-
-</body>
-</html>
