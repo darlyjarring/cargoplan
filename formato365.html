@@ -28,9 +28,9 @@
         
         .logo-box { position: absolute; top: 10px; left: 45px; background: #003366; color: white; padding: 5px 15px; font-weight: bold; font-size: 24px; z-index: 5; }
 
-        .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; }
-        .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 12px; cursor: pointer; display: flex; align-items: center; }
-        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
+        .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; overflow-x: auto; }
+        .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 11px; cursor: pointer; display: flex; align-items: center; white-space: nowrap; }
+        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; background: #fff; }
     </style>
 </head>
 <body>
@@ -84,11 +84,9 @@
 
     async function buscarDatos() {
         const sem = document.getElementById('txtSemana').value;
-        // 1. Obtener Contenedores
         const { data: contenedores } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
         if (!contenedores) return;
 
-        // 2. Obtener DAEs vinculadas por Booking desde la base REPORTE_DAES
         const bookings = [...new Set(contenedores.map(c => c.booking))].filter(Boolean);
         const { data: daes } = await _supabase.from('reporte_daes').select('*').in('booking', bookings);
 
@@ -108,6 +106,7 @@
         const sel = document.getElementById('selBuque');
         sel.innerHTML = '<option>Nave...</option>' + buques.map(b => `<option value="${b}">${b}</option>`).join('');
         sel.disabled = false;
+        document.getElementById('selPuerto').disabled = true;
     }
 
     function cargarPuertos() {
@@ -127,18 +126,17 @@
     }
 
     function limpiarYTabular(datos) {
-        for(let r=1; r<=60; r++) { if(r<9 || r>9) cols.forEach(c => setCelda(r, c, '')); }
-        if(!datos.length) return;
+        // Limpiar cuerpo (fila 1 a 60, excepto cabecera 9)
+        for(let r=1; r<=60; r++) { if(r !== 9) cols.forEach(c => setCelda(r, c, '')); }
+        if(!datos || datos.length === 0) return;
 
         const infoM = masterMap[datos[0].booking.trim()] || {};
 
-        // RE-DIBUJAR DISEÑO CABECERA
+        // RE-DIBUJAR DISEÑO CABECERA SEGÚN DATOS DEL PRIMER REGISTRO DEL GRUPO
         setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'H', 'WEEK:', true); setCelda(5, 'I', document.getElementById('txtSemana').value);
         setCelda(5, 'K', 'TYPE OF BOX:', true); setCelda(5, 'L', infoM.cliente || ""); 
-        
         setCelda(6, 'B', 'PORT:', true); setCelda(6, 'C', document.getElementById('selPuerto').value);
-        
         setCelda(7, 'K', 'COMMODITY:', true); setCelda(7, 'L', 'BANANAS');
         setCelda(8, 'K', 'DESTINATION:', true); setCelda(8, 'L', infoM.destino || "");
 
@@ -148,7 +146,7 @@
             setCelda(r, 'A', i + 1); 
             setCelda(r, 'B', reg.contenedor); 
             setCelda(r, 'C', reg.cajas);
-            setCelda(r, 'D', m.dae || ""); // DAE CONECTADA POR BOOKING
+            setCelda(r, 'D', m.dae || ""); 
             setCelda(r, 'E', reg.booking);
             setCelda(r, 'F', reg.sello_nav); 
             setCelda(r, 'G', reg.sello_vent);
@@ -181,19 +179,51 @@
     }
 
     function focusCell(r, c) { const el = document.getElementById(`cell-${r}-${c}`); if (el) el.focus(); }
+    
     function setCelda(r, c, txt, b=false) { 
         const el = document.getElementById(`cell-${r}-${c}`); 
-        if(el) { el.innerText = txt || ''; el.style.fontWeight = b ? 'bold' : 'normal'; } 
+        if(el) { 
+            el.innerText = txt || ''; 
+            el.style.fontWeight = b ? 'bold' : 'normal'; 
+        } 
     }
     
     function crearTabs(datos) {
         const bar = document.getElementById('tabs-bar');
-        bar.innerHTML = '<div class="tab-item active" onclick="generarTodo()">MASTER</div>';
+        const buq = document.getElementById('selBuque').value;
+        const pto = document.getElementById('selPuerto').value;
+
+        // Limpiar tabs y poner el Master original
+        bar.innerHTML = '';
+        const btnMaster = document.createElement('div');
+        btnMaster.className = 'tab-item active';
+        btnMaster.innerText = 'MASTER';
+        btnMaster.onclick = () => {
+            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+            btnMaster.classList.add('active');
+            limpiarYTabular(datos);
+        };
+        bar.appendChild(btnMaster);
+
+        // Agrupar por Destino + Marca + Booking (Para separar por DAE/Consignatario)
         const grupos = {};
-        datos.forEach(r => { const k = `${r.destino} - ${r.marca}`; if(!grupos[k]) grupos[k] = []; grupos[k].push(r); });
+        datos.forEach(r => {
+            const m = masterMap[r.booking.trim()] || {};
+            const key = `${m.destino || 'S.D'} - ${r.marca || 'S.M'} (BK: ${r.booking})`;
+            if(!grupos[key]) grupos[key] = [];
+            grupos[key].push(r);
+        });
+
+        // Crear una pestaña por cada combinación
         Object.keys(grupos).forEach(k => {
-            const div = document.createElement('div'); div.className = 'tab-item'; div.innerText = k;
-            div.onclick = () => { document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active')); div.classList.add('active'); limpiarYTabular(grupos[k]); };
+            const div = document.createElement('div');
+            div.className = 'tab-item';
+            div.innerText = k;
+            div.onclick = () => {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                div.classList.add('active');
+                limpiarYTabular(grupos[k]);
+            };
             bar.appendChild(div);
         });
     }
