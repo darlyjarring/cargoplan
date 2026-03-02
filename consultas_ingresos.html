@@ -28,7 +28,7 @@
             padding: 15px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
             margin: 20px auto;
-            max-width: 450px;
+            max-width: 500px; /* Un poco más ancho para el nuevo botón */
             border: 1px solid #ddd;
         }
         .main-container {
@@ -76,7 +76,6 @@
             color: #212529;
             border-color: #dee2e6;
         }
-        /* Estilo específico para resaltar el crédito */
         .info-credito {
             background: #e8f5e9;
             color: #2e7d32;
@@ -123,12 +122,12 @@
         <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
         <input type="text" id="txtBusqueda" class="form-control" placeholder="EJ: GCXU8021152" oninput="this.value = this.value.toUpperCase()">
         <button class="btn btn-primary fw-bold" onclick="buscarContenedor()">BUSCAR</button>
+        <button class="btn btn-outline-secondary fw-bold" onclick="limpiarCampos()">LIMPIAR</button>
     </div>
 </div>
 
 <div id="panelPrincipal" style="display:none;" class="main-container">
     <div class="row g-4">
-        
         <div class="col-md-4">
             <div class="col-title">Disposición del Cliente</div>
             <div class="mb-3"><label class="data-label">Contenedor</label><div id="outContenedor" class="info-static"></div></div>
@@ -200,6 +199,24 @@
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
     let currentId = null;
 
+    // Función para limpiar todos los campos
+    function limpiarCampos() {
+        currentId = null;
+        document.getElementById('txtBusqueda').value = "";
+        document.getElementById('panelPrincipal').style.display = 'none';
+        
+        // Limpiar inputs editables
+        const inputs = document.querySelectorAll('.form-control-edit');
+        inputs.forEach(i => i.value = "");
+        
+        // Limpiar divs estáticos
+        const statics = document.querySelectorAll('.info-static');
+        statics.forEach(s => s.innerText = "");
+        
+        document.getElementById('areaCredito').style.display = 'none';
+        document.getElementById('txtBusqueda').focus();
+    }
+
     async function buscarContenedor() {
         const busqueda = document.getElementById('txtBusqueda').value.trim();
         if(!busqueda) return;
@@ -225,7 +242,6 @@
             document.getElementById('outEmpresa').innerText = cargo ? (cargo.empresa || '---') : '---';
             document.getElementById('outDestino').innerText = cargo ? (cargo.destino || '---') : '---';
 
-            // --- LÓGICA DE CRÉDITO TPG ---
             const areaCredito = document.getElementById('areaCredito');
             const outCredito = document.getElementById('outCredito');
             
@@ -242,7 +258,6 @@
             } else {
                 areaCredito.style.display = 'none';
             }
-            // -----------------------------
 
             document.getElementById('inVapor').value = cargo ? (cargo.barco || '') : '';
             document.getElementById('inCodigo').value = plan.codigo || '';
@@ -304,12 +319,12 @@
         
         if(!error) { 
             alert("¡REGISTRO ACTUALIZADO CON ÉXITO!"); 
-            buscarContenedor();
+            limpiarCampos(); // Limpia todo después de guardar con éxito
         } else {
             alert("Error al guardar: " + error.message);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="bi bi-cloud-check me-2"></i> GUARDAR TODO EL REGISTRO';
         }
-        btn.disabled = false;
-        btn.innerHTML = '<i class="bi bi-cloud-check me-2"></i> GUARDAR TODO EL REGISTRO';
     }
 </script>
 </body>
