@@ -27,7 +27,7 @@
         .logo-box { position: absolute; top: 10px; left: 45px; background: #003366; color: white; padding: 5px 15px; font-weight: bold; font-size: 24px; z-index: 5; }
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; overflow-x: auto; }
         .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 11px; cursor: pointer; display: flex; align-items: center; white-space: nowrap; }
-        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
+        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; background: #fff; }
     </style>
 </head>
 <body>
@@ -35,7 +35,7 @@
 <div class="excel-toolbar">
     <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana">
     <select id="selEmpresa" class="form-select form-select-sm w-auto">
-        <option value="">Empresa...</option>
+        <option value="">Seleccione Empresa...</option>
         <option value="COMERSUR">COMERSUR</option>
         <option value="BANANAS">BANANAS S.A.</option>
     </select>
@@ -64,7 +64,7 @@
         const head = document.getElementById('head-letters');
         const body = document.getElementById('grid-body');
         head.innerHTML = `<td></td>` + cols.map(c => `<td class="col-${c}">${c}</td>`).join('');
-        for (let i = 1; i <= 60; i++) {
+        for (let i = 1; i <= 80; i++) {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td class="row-label">${i}</td>` + 
                 cols.map(c => `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`).join('');
@@ -77,37 +77,31 @@
     async function buscarDatos() {
         const sem = document.getElementById('txtSemana').value;
         const emp = document.getElementById('selEmpresa').value;
-        if(!sem) return alert("Ingrese semana");
+        if(!sem || !emp) return alert("Por favor seleccione SEMANA y EMPRESA");
 
-        // Actualizar visualmente el logo
-        document.getElementById('displayEmpresa').innerText = emp || "COMERSUR";
+        document.getElementById('displayEmpresa').innerText = emp;
 
-        // 1. Obtener Contenedores filtrando por semana (y empresa si se seleccionó)
-        let query = _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
-        const { data: contenedores } = await query;
+        // 1. Obtener Contenedores
+        const { data: contenedores } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
         if (!contenedores) return;
 
-        // 2. Obtener DAEs vinculadas
+        // 2. Obtener DAEs
         const bookings = [...new Set(contenedores.map(c => c.booking))].filter(Boolean);
-        const { data: daes } = await _supabase.from('reporte_daes').select('*').in('booking', bookings);
+        const { data: daes } = await _supabase.from('reporte_daes').select('*').in('booking', bookings).eq('empresa', emp);
 
         masterMap = {};
         if (daes) {
             daes.forEach(d => {
                 masterMap[d.booking.trim()] = {
                     dae: d.dae || '',
-                    cliente: d.cliente || '',
-                    empresa: d.empresa || '',
+                    cliente: d.cliente || d.marca || '', // Consignatario
                     destino: d.puerto_destino || d.destino || ''
                 };
             });
         }
 
-        // Filtrar localmente por empresa para asegurar el cuadro de sellos
-        fullData = emp ? contenedores.filter(c => {
-            const m = masterMap[c.booking?.trim()] || {};
-            return m.empresa === emp;
-        }) : contenedores;
+        // Filtrar solo los contenedores que pertenecen a la empresa seleccionada vía DAE/Booking
+        fullData = contenedores.filter(c => masterMap[c.booking?.trim()]);
 
         const buques = [...new Set(fullData.map(d => d.vapor || d.barco || d.nave))].filter(Boolean);
         const sel = document.getElementById('selBuque');
@@ -127,21 +121,25 @@
         const buq = document.getElementById('selBuque').value;
         const pto = document.getElementById('selPuerto').value;
         const filtrado = fullData.filter(d => (d.vapor||d.barco||d.nave) === buq && (d.terminal||d.puerto) === pto);
-        limpiarYTabular(filtrado);
+        
+        limpiarYTabular(filtrado, "MASTER");
         crearTabs(filtrado);
     }
 
-    function limpiarYTabular(datos) {
-        for(let r=1; r<=60; r++) { if(r !== 9) cols.forEach(c => setCelda(r, c, '')); }
+    function limpiarYTabular(datos, nombreTab) {
+        for(let r=1; r<=80; r++) { if(r !== 9) cols.forEach(c => setCelda(r, c, '')); }
         if(!datos.length) return;
 
         const infoM = masterMap[datos[0].booking?.trim()] || {};
 
-        // Cabecera
+        // CABECERA FIJA
         setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'C', document.getElementById('selBuque').value);
-        setCelda(5, 'H', 'WEEK:', true); setCelda(5, 'I', document.getElementById('txtSemana').value);
-        setCelda(6, 'B', 'PORT:', true); setCelda(6, 'C', document.getElementById('selPuerto').value);
-        setCelda(8, 'K', 'DESTINATION:', true); setCelda(8, 'L', infoM.destino || "");
+        setCelda(5, 'H', 'WEEK:', true);   setCelda(5, 'I', document.getElementById('txtSemana').value);
+        setCelda(6, 'B', 'PORT:', true);   setCelda(6, 'C', document.getElementById('selPuerto').value);
+        
+        // CONSIGNATARIO Y DESTINO (Visible en cabecera)
+        setCelda(5, 'K', 'CLIENT:', true); setCelda(5, 'L', nombreTab === "MASTER" ? "VARIOUS" : infoM.cliente);
+        setCelda(8, 'K', 'DESTINATION:', true); setCelda(8, 'L', nombreTab === "MASTER" ? "VARIOUS" : infoM.destino);
 
         datos.forEach((reg, i) => {
             const r = 10 + i;
@@ -151,45 +149,69 @@
             setCelda(r, 'C', reg.cajas);
             setCelda(r, 'D', m.dae || ""); 
             setCelda(r, 'E', reg.booking);
-            // SELLOS MAPEADOS SEGÚN REQUERIMIENTO
-            setCelda(r, 'F', reg.sello_nav); // Naviera
-            setCelda(r, 'G', reg.sello_vent); // Verificador
-            setCelda(r, 'H', reg.sello_sticker); // Adhesivo
-            setCelda(r, 'I', reg.sello_tci); // TCI
+            
+            // SELLOS SEGÚN INDICACIONES PREVIAS
+            setCelda(r, 'F', reg.sello_nav);      // Naviera
+            setCelda(r, 'G', reg.sello_vent);     // Verificador
+            setCelda(r, 'H', reg.sello_sticker);  // Adhesivo
+            setCelda(r, 'I', reg.sello_tci);      // TCI
             setCelda(r, 'J', reg.sello_sticker_nav); // Seguridad
+            
             setCelda(r, 'K', reg.termografo);
-            setCelda(r, 'L', reg.marca); 
+            setCelda(r, 'L', reg.marca);          // Marca / Consignatario en fila
+            setCelda(r, 'M', reg.observacion || "");
+            setCelda(r, 'N', reg.fecha);
+            setCelda(r, 'O', reg.codigo_productor);
             setCelda(r, 'P', reg.productor);
         });
     }
 
     function crearTabs(datos) {
         const bar = document.getElementById('tabs-bar');
-        bar.innerHTML = '<div class="tab-item active" onclick="generarTodo()">MASTER</div>';
+        bar.innerHTML = '';
         
+        // 1. Pestaña MASTER
+        const btnMaster = document.createElement('div');
+        btnMaster.className = 'tab-item active';
+        btnMaster.innerText = 'MASTER';
+        btnMaster.onclick = () => {
+            actualizarTabActiva(btnMaster);
+            limpiarYTabular(datos, "MASTER");
+        };
+        bar.appendChild(btnMaster);
+
+        // 2. Agrupación por Consignatario(Cliente/Marca) + Destino
         const grupos = {};
         datos.forEach(r => {
             const m = masterMap[r.booking?.trim()] || {};
-            const key = `${m.empresa || 'S.E'} - ${r.marca || 'S.M'} - ${m.destino || 'S.D'}`;
+            const clientName = m.cliente || "SIN_CLIENTE";
+            const destName = m.destino || "SIN_DESTINO";
+            const key = `${clientName} | ${destName}`;
+            
             if(!grupos[key]) grupos[key] = [];
             grupos[key].push(r);
         });
 
+        // 3. Crear pestañas únicas
         Object.keys(grupos).forEach(k => {
             const div = document.createElement('div');
             div.className = 'tab-item';
             div.innerText = k;
             div.onclick = () => {
-                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-                div.classList.add('active');
-                limpiarYTabular(grupos[k]);
+                actualizarTabActiva(div);
+                limpiarYTabular(grupos[k], k);
             };
             bar.appendChild(div);
         });
     }
 
+    function actualizarTabActiva(el) {
+        document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+    }
+
     function dibujarEsqueleto() {
-        const h = ["N°","Container","Boxes","DAE","Booking","Seal Nav","Seal Vent","Seal Stick","Seal TCI","Seal Sec","Thermo","Brand","Obs","Date","Code","Producer"];
+        const h = ["N°","Container Number","Amount Of Boxes","Dae","Booking","Naviera Seal","Verificador Seal","Adhesivo Seal","TCI Seal","Seguridad Seal","Thermograph","Brand / Client","Observations","Date","Code","Producer"];
         h.forEach((t, i) => { const el = document.getElementById(`cell-9-${cols[i]}`); if(el){ el.innerText=t; el.className='header-9'; } });
     }
 
