@@ -10,7 +10,6 @@
         body { background: #f4f7f6; font-family: 'Segoe UI', sans-serif; padding: 20px; }
         .main-card { border: none; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.08); background: white; padding: 25px; }
         .tpg-header { color: var(--tpg-color); font-weight: bold; border-left: 5px solid var(--tpg-color); padding-left: 15px; margin-bottom: 25px; }
-        .table thead { background-color: #f8f9fa; }
         .tpg-badge { background: var(--tpg-color); color: white; padding: 3px 10px; border-radius: 20px; font-size: 11px; }
         .input-credito { border: 2px solid #dee2e6; transition: all 0.3s; font-weight: 500; }
         .input-credito:focus { border-color: var(--tpg-color); box-shadow: 0 0 8px rgba(16, 124, 65, 0.2); }
@@ -32,9 +31,7 @@
             <div class="col-md-3">
                 <label class="form-label small fw-bold">Empresa Exportadora</label>
                 <select id="selEmpresa" class="form-select">
-                    <option value="">Seleccione...</option>
-                    <option value="COMERSUR">COMERSUR</option>
-                    <option value="BANANAS">BANANAS S.A.</option>
+                    <option value="">Cargando empresas...</option>
                 </select>
             </div>
             <div class="col-md-2">
@@ -56,7 +53,7 @@
                 </thead>
                 <tbody id="listaDaes">
                     <tr>
-                        <td colspan="6" class="text-center text-muted">Ingrese los filtros para buscar información.</td>
+                        <td colspan="6" class="text-center text-muted">Seleccione los filtros para buscar información.</td>
                     </tr>
                 </tbody>
             </table>
@@ -65,8 +62,32 @@
 </div>
 
 <script>
-    // Configuración de Supabase
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
+
+    // Al cargar la página, obtener las empresas de la base de datos
+    window.onload = async function() {
+        const { data, error } = await _supabase
+            .from('reporte_daes')
+            .select('empresa');
+
+        const select = document.getElementById('selEmpresa');
+        
+        if (error) {
+            select.innerHTML = '<option value="">Error al cargar</option>';
+            return;
+        }
+
+        // Obtener nombres únicos de empresas
+        const empresasUnicas = [...new Set(data.map(item => item.empresa))].filter(Boolean).sort();
+        
+        select.innerHTML = '<option value="">Seleccione Empresa...</option>';
+        empresasUnicas.forEach(emp => {
+            const opt = document.createElement('option');
+            opt.value = emp;
+            opt.innerText = emp;
+            select.appendChild(opt);
+        });
+    };
 
     async function cargarDaesTPG() {
         const sem = document.getElementById('txtSemana').value;
@@ -77,7 +98,6 @@
 
         tbody.innerHTML = '<tr><td colspan="6" class="text-center"><div class="spinner-border text-success" role="status"></div><br>Buscando en TPG/INARPI...</td></tr>';
 
-        // 1. Obtener todas las DAES de la semana y empresa
         const { data, error } = await _supabase
             .from('reporte_daes')
             .select('*')
@@ -89,15 +109,10 @@
             return;
         }
 
-        // 2. Filtro flexible para detectar variaciones de TPG e INARPI
         const filtrados = data.filter(d => {
             const puerto = (d.puerto || "").toUpperCase();
-            // Eliminamos espacios para comparar: "INARPI / TPG" -> "INARPI/TPG"
             const puertoLimpio = puerto.replace(/\s+/g, '');
-            
-            return puertoLimpio.includes("TPG") || 
-                   puertoLimpio.includes("INARPI") || 
-                   puertoLimpio.includes("TPG-4");
+            return puertoLimpio.includes("TPG") || puertoLimpio.includes("INARPI") || puertoLimpio.includes("TPG-4");
         });
 
         tbody.innerHTML = '';
@@ -107,7 +122,6 @@
             return;
         }
 
-        // 3. Dibujar la tabla
         filtrados.forEach(d => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
@@ -140,22 +154,18 @@
             .eq('id', id);
 
         if (error) {
-            alert("Error al guardar: " + error.message);
+            alert("Error: " + error.message);
             btn.disabled = false;
             btn.innerText = "Guardar";
         } else {
-            // Efecto visual de éxito
             const input = document.getElementById(`credito-${id}`);
-            input.classList.remove('is-invalid');
             input.style.backgroundColor = "#d1e7dd";
             btn.innerText = "¡Guardado!";
-            btn.classList.replace('btn-save', 'btn-outline-success');
             
             setTimeout(() => {
                 input.style.backgroundColor = "white";
                 btn.disabled = false;
                 btn.innerText = "Guardar";
-                btn.classList.replace('btn-outline-success', 'btn-save');
             }, 1500);
         }
     }
