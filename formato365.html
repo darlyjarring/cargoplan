@@ -106,7 +106,6 @@
         const sel = document.getElementById('selBuque');
         sel.innerHTML = '<option>Nave...</option>' + buques.map(b => `<option value="${b}">${b}</option>`).join('');
         sel.disabled = false;
-        document.getElementById('selPuerto').disabled = true;
     }
 
     function cargarPuertos() {
@@ -126,13 +125,12 @@
     }
 
     function limpiarYTabular(datos) {
-        // Limpiar cuerpo (fila 1 a 60, excepto cabecera 9)
         for(let r=1; r<=60; r++) { if(r !== 9) cols.forEach(c => setCelda(r, c, '')); }
         if(!datos || datos.length === 0) return;
 
+        // Cabecera basada en el primer registro del grupo
         const infoM = masterMap[datos[0].booking.trim()] || {};
 
-        // RE-DIBUJAR DISEÑO CABECERA SEGÚN DATOS DEL PRIMER REGISTRO DEL GRUPO
         setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'H', 'WEEK:', true); setCelda(5, 'I', document.getElementById('txtSemana').value);
         setCelda(5, 'K', 'TYPE OF BOX:', true); setCelda(5, 'L', infoM.cliente || ""); 
@@ -179,22 +177,13 @@
     }
 
     function focusCell(r, c) { const el = document.getElementById(`cell-${r}-${c}`); if (el) el.focus(); }
-    
-    function setCelda(r, c, txt, b=false) { 
-        const el = document.getElementById(`cell-${r}-${c}`); 
-        if(el) { 
-            el.innerText = txt || ''; 
-            el.style.fontWeight = b ? 'bold' : 'normal'; 
-        } 
-    }
+    function setCelda(r, c, txt, b=false) { const el = document.getElementById(`cell-${r}-${c}`); if(el) { el.innerText = txt || ''; el.style.fontWeight = b ? 'bold' : 'normal'; } }
     
     function crearTabs(datos) {
         const bar = document.getElementById('tabs-bar');
-        const buq = document.getElementById('selBuque').value;
-        const pto = document.getElementById('selPuerto').value;
-
-        // Limpiar tabs y poner el Master original
         bar.innerHTML = '';
+
+        // Tab MASTER
         const btnMaster = document.createElement('div');
         btnMaster.className = 'tab-item active';
         btnMaster.innerText = 'MASTER';
@@ -205,16 +194,16 @@
         };
         bar.appendChild(btnMaster);
 
-        // Agrupar por Destino + Marca + Booking (Para separar por DAE/Consignatario)
+        // Agrupar por MARCA - DESTINO ÚNICAMENTE
         const grupos = {};
         datos.forEach(r => {
             const m = masterMap[r.booking.trim()] || {};
-            const key = `${m.destino || 'S.D'} - ${r.marca || 'S.M'} (BK: ${r.booking})`;
+            const key = `${r.marca || 'S.M'} - ${m.destino || 'S.D'}`;
             if(!grupos[key]) grupos[key] = [];
             grupos[key].push(r);
         });
 
-        // Crear una pestaña por cada combinación
+        // Crear Tabs por grupo
         Object.keys(grupos).forEach(k => {
             const div = document.createElement('div');
             div.className = 'tab-item';
