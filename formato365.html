@@ -12,12 +12,10 @@
         .excel-viewport { flex: 1; overflow: auto; background: white; position: relative; }
         table { border-collapse: collapse; table-layout: fixed; width: max-content; }
         
-        /* Coordenadas de diseño exactas */
         .col-A { width: 35px; } .col-B { width: 140px; } .col-C { width: 100px; } .col-D { width: 230px; } 
         .col-E { width: 150px; } .col-F { width: 130px; } .col-G { width: 110px; } .col-H { width: 130px; }
         .col-I { width: 100px; } .col-J { width: 110px; } .col-K { width: 130px; } .col-L { width: 220px; }
         .col-M { width: 130px; } .col-N { width: 130px; } .col-O { width: 110px; } .col-P { width: 260px; }
-        .col-Q { width: 180px; } .col-R { width: 130px; }
 
         td { border: 0.5px solid var(--excel-border); padding: 0 5px; font-size: 11px; outline: none; white-space: nowrap; vertical-align: middle; height: 25px; }
         td:focus { border: 2px solid var(--excel-selected) !important; background: #fff; z-index: 10; position: relative; }
@@ -27,23 +25,27 @@
         .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; line-height: 1.2; }
         
         .logo-box { position: absolute; top: 10px; left: 45px; background: #003366; color: white; padding: 5px 15px; font-weight: bold; font-size: 24px; z-index: 5; }
-
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; overflow-x: auto; }
         .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 11px; cursor: pointer; display: flex; align-items: center; white-space: nowrap; }
-        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; background: #fff; }
+        .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; }
     </style>
 </head>
 <body>
 
 <div class="excel-toolbar">
     <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana">
+    <select id="selEmpresa" class="form-select form-select-sm w-auto">
+        <option value="">Empresa...</option>
+        <option value="COMERSUR">COMERSUR</option>
+        <option value="BANANAS">BANANAS S.A.</option>
+    </select>
     <button onclick="buscarDatos()" class="btn btn-sm btn-primary">Cargar Cargo Plan</button>
     <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()"><option>Nave...</option></select>
     <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="generarTodo()"><option>Puerto...</option></select>
 </div>
 
 <div class="excel-viewport">
-    <div class="logo-box">COMERSUR</div>
+    <div class="logo-box" id="displayEmpresa">COMERSUR</div>
     <table id="excel-table">
         <thead><tr id="head-letters" class="col-label"></tr></thead>
         <tbody id="grid-body"></tbody>
@@ -72,21 +74,20 @@
         setupNavigation();
     }
 
-    function normalizarPuerto(p) {
-        if (!p) return "";
-        const u = p.toUpperCase();
-        if (u.includes("NAPORTEC")) return "NAPORTEC";
-        if (u.includes("TPG") || u.includes("INARPI")) return "TPG";
-        if (u.includes("POSORJA") || u.includes("DP WORLD")) return "POSORJA";
-        if (u.includes("CONTECON") || u.includes("CGSA")) return "CONTECON";
-        return p;
-    }
-
     async function buscarDatos() {
         const sem = document.getElementById('txtSemana').value;
-        const { data: contenedores } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
+        const emp = document.getElementById('selEmpresa').value;
+        if(!sem) return alert("Ingrese semana");
+
+        // Actualizar visualmente el logo
+        document.getElementById('displayEmpresa').innerText = emp || "COMERSUR";
+
+        // 1. Obtener Contenedores filtrando por semana (y empresa si se seleccionó)
+        let query = _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
+        const { data: contenedores } = await query;
         if (!contenedores) return;
 
+        // 2. Obtener DAEs vinculadas
         const bookings = [...new Set(contenedores.map(c => c.booking))].filter(Boolean);
         const { data: daes } = await _supabase.from('reporte_daes').select('*').in('booking', bookings);
 
@@ -96,12 +97,18 @@
                 masterMap[d.booking.trim()] = {
                     dae: d.dae || '',
                     cliente: d.cliente || '',
+                    empresa: d.empresa || '',
                     destino: d.puerto_destino || d.destino || ''
                 };
             });
         }
 
-        fullData = contenedores;
+        // Filtrar localmente por empresa para asegurar el cuadro de sellos
+        fullData = emp ? contenedores.filter(c => {
+            const m = masterMap[c.booking?.trim()] || {};
+            return m.empresa === emp;
+        }) : contenedores;
+
         const buques = [...new Set(fullData.map(d => d.vapor || d.barco || d.nave))].filter(Boolean);
         const sel = document.getElementById('selBuque');
         sel.innerHTML = '<option>Nave...</option>' + buques.map(b => `<option value="${b}">${b}</option>`).join('');
@@ -110,7 +117,7 @@
 
     function cargarPuertos() {
         const buq = document.getElementById('selBuque').value;
-        const puertos = [...new Set(fullData.filter(d => (d.vapor||d.barco||d.nave) === buq).map(d => normalizarPuerto(d.puerto || d.terminal)))].filter(Boolean);
+        const puertos = [...new Set(fullData.filter(d => (d.vapor||d.barco||d.nave) === buq).map(d => d.terminal || d.puerto))].filter(Boolean);
         const sel = document.getElementById('selPuerto');
         sel.innerHTML = '<option>Puerto...</option>' + puertos.map(p => `<option value="${p}">${p}</option>`).join('');
         sel.disabled = false;
@@ -119,48 +126,70 @@
     function generarTodo() {
         const buq = document.getElementById('selBuque').value;
         const pto = document.getElementById('selPuerto').value;
-        const filtrado = fullData.filter(d => (d.vapor||d.barco||d.nave) === buq && normalizarPuerto(d.puerto||d.terminal) === pto);
+        const filtrado = fullData.filter(d => (d.vapor||d.barco||d.nave) === buq && (d.terminal||d.puerto) === pto);
         limpiarYTabular(filtrado);
         crearTabs(filtrado);
     }
 
     function limpiarYTabular(datos) {
         for(let r=1; r<=60; r++) { if(r !== 9) cols.forEach(c => setCelda(r, c, '')); }
-        if(!datos || datos.length === 0) return;
+        if(!datos.length) return;
 
-        // Cabecera basada en el primer registro del grupo
-        const infoM = masterMap[datos[0].booking.trim()] || {};
+        const infoM = masterMap[datos[0].booking?.trim()] || {};
 
+        // Cabecera
         setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'H', 'WEEK:', true); setCelda(5, 'I', document.getElementById('txtSemana').value);
-        setCelda(5, 'K', 'TYPE OF BOX:', true); setCelda(5, 'L', infoM.cliente || ""); 
         setCelda(6, 'B', 'PORT:', true); setCelda(6, 'C', document.getElementById('selPuerto').value);
-        setCelda(7, 'K', 'COMMODITY:', true); setCelda(7, 'L', 'BANANAS');
         setCelda(8, 'K', 'DESTINATION:', true); setCelda(8, 'L', infoM.destino || "");
 
         datos.forEach((reg, i) => {
             const r = 10 + i;
-            const m = masterMap[reg.booking.trim()] || {};
+            const m = masterMap[reg.booking?.trim()] || {};
             setCelda(r, 'A', i + 1); 
             setCelda(r, 'B', reg.contenedor); 
             setCelda(r, 'C', reg.cajas);
             setCelda(r, 'D', m.dae || ""); 
             setCelda(r, 'E', reg.booking);
-            setCelda(r, 'F', reg.sello_nav); 
-            setCelda(r, 'G', reg.sello_vent);
-            setCelda(r, 'H', reg.sello_sticker); 
-            setCelda(r, 'I', reg.sello_tci);
-            setCelda(r, 'J', reg.sello_sticker_nav); 
+            // SELLOS MAPEADOS SEGÚN REQUERIMIENTO
+            setCelda(r, 'F', reg.sello_nav); // Naviera
+            setCelda(r, 'G', reg.sello_vent); // Verificador
+            setCelda(r, 'H', reg.sello_sticker); // Adhesivo
+            setCelda(r, 'I', reg.sello_tci); // TCI
+            setCelda(r, 'J', reg.sello_sticker_nav); // Seguridad
             setCelda(r, 'K', reg.termografo);
             setCelda(r, 'L', reg.marca); 
-            setCelda(r, 'N', reg.fecha);
-            setCelda(r, 'O', reg.codigo_productor);
             setCelda(r, 'P', reg.productor);
         });
     }
 
+    function crearTabs(datos) {
+        const bar = document.getElementById('tabs-bar');
+        bar.innerHTML = '<div class="tab-item active" onclick="generarTodo()">MASTER</div>';
+        
+        const grupos = {};
+        datos.forEach(r => {
+            const m = masterMap[r.booking?.trim()] || {};
+            const key = `${m.empresa || 'S.E'} - ${r.marca || 'S.M'} - ${m.destino || 'S.D'}`;
+            if(!grupos[key]) grupos[key] = [];
+            grupos[key].push(r);
+        });
+
+        Object.keys(grupos).forEach(k => {
+            const div = document.createElement('div');
+            div.className = 'tab-item';
+            div.innerText = k;
+            div.onclick = () => {
+                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
+                div.classList.add('active');
+                limpiarYTabular(grupos[k]);
+            };
+            bar.appendChild(div);
+        });
+    }
+
     function dibujarEsqueleto() {
-        const h = ["N°","Container Number","Amount Of Boxes","Dae","Booking","Main Bottle Seal","Vent Seals","Sticker Seal","TCI Seal","Security Seal","Thermograph","Brand","Observations","Consolidation Date","Producer Codes","Producers","Farm","Inspection"];
+        const h = ["N°","Container","Boxes","DAE","Booking","Seal Nav","Seal Vent","Seal Stick","Seal TCI","Seal Sec","Thermo","Brand","Obs","Date","Code","Producer"];
         h.forEach((t, i) => { const el = document.getElementById(`cell-9-${cols[i]}`); if(el){ el.innerText=t; el.className='header-9'; } });
     }
 
@@ -178,44 +207,6 @@
 
     function focusCell(r, c) { const el = document.getElementById(`cell-${r}-${c}`); if (el) el.focus(); }
     function setCelda(r, c, txt, b=false) { const el = document.getElementById(`cell-${r}-${c}`); if(el) { el.innerText = txt || ''; el.style.fontWeight = b ? 'bold' : 'normal'; } }
-    
-    function crearTabs(datos) {
-        const bar = document.getElementById('tabs-bar');
-        bar.innerHTML = '';
-
-        // Tab MASTER
-        const btnMaster = document.createElement('div');
-        btnMaster.className = 'tab-item active';
-        btnMaster.innerText = 'MASTER';
-        btnMaster.onclick = () => {
-            document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-            btnMaster.classList.add('active');
-            limpiarYTabular(datos);
-        };
-        bar.appendChild(btnMaster);
-
-        // Agrupar por MARCA - DESTINO ÚNICAMENTE
-        const grupos = {};
-        datos.forEach(r => {
-            const m = masterMap[r.booking.trim()] || {};
-            const key = `${r.marca || 'S.M'} - ${m.destino || 'S.D'}`;
-            if(!grupos[key]) grupos[key] = [];
-            grupos[key].push(r);
-        });
-
-        // Crear Tabs por grupo
-        Object.keys(grupos).forEach(k => {
-            const div = document.createElement('div');
-            div.className = 'tab-item';
-            div.innerText = k;
-            div.onclick = () => {
-                document.querySelectorAll('.tab-item').forEach(t => t.classList.remove('active'));
-                div.classList.add('active');
-                limpiarYTabular(grupos[k]);
-            };
-            bar.appendChild(div);
-        });
-    }
 
     window.onload = init;
 </script>
