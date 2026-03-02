@@ -76,6 +76,13 @@
             color: #212529;
             border-color: #dee2e6;
         }
+        /* Estilo específico para resaltar el crédito */
+        .info-credito {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+            font-weight: bold;
+        }
         .vertical-divider {
             border-left: 1px solid #eee;
             padding-left: 20px;
@@ -126,6 +133,12 @@
             <div class="col-title">Disposición del Cliente</div>
             <div class="mb-3"><label class="data-label">Contenedor</label><div id="outContenedor" class="info-static"></div></div>
             <div class="mb-3"><label class="data-label">Booking</label><div id="outBooking" class="info-static"></div></div>
+            
+            <div id="areaCredito" class="mb-3" style="display:none;">
+                <label class="data-label text-success">Crédito TPG (AISV)</label>
+                <div id="outCredito" class="info-static info-credito"></div>
+            </div>
+
             <div class="mb-3"><label class="data-label">N° DAE</label><div id="outDae" class="info-static text-danger"></div></div>
             <div class="mb-3"><label class="data-label">Consignatario (Cliente)</label><div id="outCliente" class="info-static"></div></div>
             <div class="mb-3"><label class="data-label">Empresa</label><div id="outEmpresa" class="info-static"></div></div>
@@ -212,9 +225,26 @@
             document.getElementById('outEmpresa').innerText = cargo ? (cargo.empresa || '---') : '---';
             document.getElementById('outDestino').innerText = cargo ? (cargo.destino || '---') : '---';
 
-            // Nave desde la columna 'barco' de DAEs
-            document.getElementById('inVapor').value = cargo ? (cargo.barco || '') : '';
+            // --- LÓGICA DE CRÉDITO TPG ---
+            const areaCredito = document.getElementById('areaCredito');
+            const outCredito = document.getElementById('outCredito');
             
+            if (cargo && cargo.terminal) {
+                const termLimpia = cargo.terminal.toUpperCase().replace(/\s+/g, '');
+                const esTPG = termLimpia.includes("TPG") || termLimpia.includes("INARPI");
+                
+                if (esTPG && cargo.credito_tpg) {
+                    areaCredito.style.display = 'block';
+                    outCredito.innerText = cargo.credito_tpg;
+                } else {
+                    areaCredito.style.display = 'none';
+                }
+            } else {
+                areaCredito.style.display = 'none';
+            }
+            // -----------------------------
+
+            document.getElementById('inVapor').value = cargo ? (cargo.barco || '') : '';
             document.getElementById('inCodigo').value = plan.codigo || '';
             document.getElementById('inChofer').value = plan.chofer || '';
             document.getElementById('inCedula').value = plan.cedula || '';
@@ -227,7 +257,6 @@
             document.getElementById('inTerminal').value = plan.terminal || '';
             document.getElementById('inCajas').value = plan.cajas !== null ? plan.cajas : ""; 
 
-            // Recuperación de Sellos (Mapeo corregido)
             document.getElementById('inNaviera').value = plan.sello_nav || '';
             document.getElementById('inAdhesivo').value = plan.sello_sticker || '';
             document.getElementById('inTci').value = plan.sello_tci || '';
@@ -262,15 +291,12 @@
             deposito: document.getElementById('inDeposito').value,
             terminal: document.getElementById('inTerminal').value,
             cajas: valorCajas !== "" ? parseInt(valorCajas) : null,
-            
-            // Mapeo Final de Sellos a Base de Datos
             sello_nav: document.getElementById('inNaviera').value,
             sello_sticker: document.getElementById('inAdhesivo').value,
             sello_tci: document.getElementById('inTci').value,
             sello_sticker_nav: document.getElementById('inSeguridad').value,
             termografo: document.getElementById('inTermografo').value,
             sello_vent: document.getElementById('inVerificador').value,
-            
             fecha_ingreso: document.getElementById('inFecha').value
         };
 
