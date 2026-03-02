@@ -2,132 +2,151 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>COMERSUR | Consultas de Ingresos</title>
+    <title>COMERSUR | Gestión de Créditos TPG</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
-        body { background: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
-        .container-fluid { padding: 20px; }
-        .card-busqueda { border: none; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); background: white; padding: 20px; margin-bottom: 20px; }
-        .table-container { background: white; border-radius: 12px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        
-        /* Estilo para el crédito TPG */
-        .credito-tpg-box { 
-            margin-top: 4px; 
-            padding: 2px 6px; 
-            background: #e7f3ed; 
-            border: 1px solid #107c41; 
-            color: #107c41; 
-            font-size: 11px; 
-            font-weight: bold; 
-            border-radius: 4px; 
-            display: inline-block;
-        }
-        .dae-text { font-weight: 600; color: #333; }
-        .terminal-badge { font-size: 10px; padding: 3px 8px; border-radius: 10px; background: #eee; color: #666; }
+        :root { --tpg-green: #107c41; }
+        body { background: #f0f2f5; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 25px; }
+        .card-tpg { border: none; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); background: white; }
+        .header-tpg { background: var(--tpg-green); color: white; border-radius: 15px 15px 0 0; padding: 20px; }
+        .tpg-badge { background: #e7f3ed; color: var(--tpg-green); border: 1px solid var(--tpg-green); font-size: 0.75rem; font-weight: bold; padding: 2px 8px; border-radius: 10px; }
+        .input-credito { border: 2px solid #ced4da; font-weight: 600; color: #333; }
+        .input-credito:focus { border-color: var(--tpg-green); box-shadow: 0 0 0 0.2rem rgba(16, 124, 65, 0.25); }
+        .btn-update { background-color: var(--tpg-green); border: none; font-weight: bold; transition: 0.3s; }
+        .btn-update:hover { background-color: #0b5e31; transform: translateY(-1px); }
     </style>
 </head>
 <body>
 
-<div class="container-fluid">
-    <div class="card-busqueda">
-        <h4 class="mb-3">Consulta de Ingresos y DAES</h4>
-        <div class="row g-3">
-            <div class="col-md-2">
-                <label class="form-label small">Semana</label>
-                <input type="number" id="txtSemana" class="form-control form-control-sm">
+<div class="container">
+    <div class="card card-tpg">
+        <div class="header-tpg">
+            <h3 class="mb-0">Control de Créditos TPG / INARPI</h3>
+            <p class="small mb-0 opacity-75">Asignación de códigos para creación de AISV</p>
+        </div>
+        
+        <div class="p-4">
+            <div class="row g-3 mb-4 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label fw-bold small text-muted">Semana de Gestión</label>
+                    <input type="number" id="txtSemana" class="form-control" placeholder="Ej: 10">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label fw-bold small text-muted">Empresa (Filtro Dinámico)</label>
+                    <select id="selEmpresa" class="form-select">
+                        <option value="">Cargando empresas...</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <button onclick="buscarTerminalesTPG()" class="btn btn-primary w-100 fw-bold">Buscar Bookings en TPG</button>
+                </div>
             </div>
-            <div class="col-md-3">
-                <label class="form-label small">Empresa</label>
-                <select id="selEmpresa" class="form-select form-select-sm">
-                    <option value="">Cargando empresas...</option>
-                </select>
-            </div>
-            <div class="col-md-2 d-flex align-items-end">
-                <button onclick="consultarIngresos()" class="btn btn-primary btn-sm w-100">Consultar</button>
+
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Booking</th>
+                            <th>DAE</th>
+                            <th>Terminal</th>
+                            <th style="width: 350px;">Código Crédito TPG</th>
+                            <th class="text-center">Acción</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoTabla">
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">Seleccione los filtros para listar los registros de TPG/INARPI.</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
-    </div>
-
-    <div class="table-container">
-        <table class="table table-sm table-hover align-middle">
-            <thead class="table-light">
-                <tr>
-                    <th>Booking</th>
-                    <th>DAE / Crédito TPG</th>
-                    <th>Terminal</th>
-                    <th>Cliente / Marca</th>
-                    <th>Destino</th>
-                    <th>Estado</th>
-                </tr>
-            </thead>
-            <tbody id="tablaCuerpo">
-                <tr><td colspan="6" class="text-center text-muted">Realice una búsqueda para ver los datos.</td></tr>
-            </tbody>
-        </table>
     </div>
 </div>
 
 <script>
+    // Configuración de Supabase
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
 
-    // Cargar empresas al inicio
+    // Carga de empresas únicas al iniciar
     window.onload = async function() {
         const { data } = await _supabase.from('reporte_daes').select('empresa');
+        const select = document.getElementById('selEmpresa');
         if (data) {
             const empresas = [...new Set(data.map(d => d.empresa))].filter(Boolean).sort();
-            const sel = document.getElementById('selEmpresa');
-            sel.innerHTML = '<option value="">Seleccione Empresa...</option>' + 
-                            empresas.map(e => `<option value="${e}">${e}</option>`).join('');
+            select.innerHTML = '<option value="">Seleccione Empresa...</option>' + 
+                               empresas.map(e => `<option value="${e}">${e}</option>`).join('');
         }
     };
 
-    async function consultarIngresos() {
+    async function buscarTerminalesTPG() {
         const sem = document.getElementById('txtSemana').value;
         const emp = document.getElementById('selEmpresa').value;
-        const tbody = document.getElementById('tablaCuerpo');
+        const tbody = document.getElementById('cuerpoTabla');
 
-        if(!sem || !emp) return alert("Complete los filtros.");
+        if(!sem || !emp) return alert("Por favor, ingrese Semana y seleccione Empresa.");
 
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Cargando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-5"><div class="spinner-border text-success"></div></td></tr>';
 
-        // Consultamos la tabla reporte_daes (donde está la columna 'terminal' y 'credito_tpg')
+        // Consulta filtrada por semana y empresa
         const { data, error } = await _supabase
             .from('reporte_daes')
             .select('*')
             .eq('semana', sem)
             .eq('empresa', emp);
 
-        if (error) return alert(error.message);
+        if (error) {
+            alert("Error: " + error.message);
+            return;
+        }
+
+        // Filtro para detectar TPG / INARPI / TPG-4 en la columna 'terminal'
+        const filtrados = data.filter(d => {
+            const t = (d.terminal || "").toUpperCase().replace(/\s+/g, '');
+            return t.includes("TPG") || t.includes("INARPI");
+        });
 
         tbody.innerHTML = '';
 
-        data.forEach(reg => {
-            const tr = document.createElement('tr');
-            
-            // Lógica para mostrar el crédito TPG si existe y si es la terminal correcta
-            const termLimpia = (reg.terminal || "").toUpperCase().replace(/\s+/g, '');
-            const esTPG = termLimpia.includes("TPG") || termLimpia.includes("INARPI");
-            
-            let celdaDae = `<div class="dae-text">${reg.dae || 'SIN DAE'}</div>`;
-            
-            // Si es TPG y tiene crédito asignado, lo mostramos debajo
-            if (esTPG && reg.credito_tpg) {
-                celdaDae += `<div class="credito-tpg-box">CRÉDITO: ${reg.credito_tpg}</div>`;
-            } else if (esTPG && !reg.credito_tpg) {
-                celdaDae += `<div class="text-danger" style="font-size: 10px;">PENDIENTE CRÉDITO</div>`;
-            }
+        if(filtrados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-muted">No se encontraron registros vinculados a TPG/INARPI.</td></tr>';
+            return;
+        }
 
+        filtrados.forEach(reg => {
+            const tr = document.createElement('tr');
             tr.innerHTML = `
-                <td class="fw-bold">${reg.booking}</td>
-                <td>${celdaDae}</td>
-                <td><span class="terminal-badge">${reg.terminal || 'N/A'}</span></td>
-                <td>${reg.cliente || reg.marca || ''}</td>
-                <td>${reg.puerto_destino || reg.destino || ''}</td>
-                <td><span class="badge ${reg.dae ? 'bg-success' : 'bg-warning'}">${reg.dae ? 'LISTO' : 'PENDIENTE'}</span></td>
+                <td class="fw-bold text-primary">${reg.booking}</td>
+                <td>${reg.dae || 'Pendiente'}</td>
+                <td><span class="tpg-badge">${reg.terminal}</span></td>
+                <td>
+                    <input type="text" id="ipt-${reg.id}" class="form-control form-control-sm input-credito" 
+                           value="${reg.credito_tpg || ''}" placeholder="Escriba código de crédito...">
+                </td>
+                <td class="text-center">
+                    <button onclick="actualizarCredito(${reg.id})" class="btn btn-update btn-sm px-4 text-white">Guardar</button>
+                </td>
             `;
             tbody.appendChild(tr);
         });
+    }
+
+    async function actualizarCredito(id) {
+        const nuevoValor = document.getElementById(`ipt-${id}`).value;
+        
+        const { error } = await _supabase
+            .from('reporte_daes')
+            .update({ credito_tpg: nuevoValor })
+            .eq('id', id);
+
+        if (error) {
+            alert("Error al actualizar: " + error.message);
+        } else {
+            const input = document.getElementById(`ipt-${id}`);
+            input.style.backgroundColor = "#d1e7dd"; // Color verde éxito temporal
+            setTimeout(() => input.style.backgroundColor = "white", 1000);
+        }
     }
 </script>
 
