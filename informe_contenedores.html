@@ -62,53 +62,49 @@
 <script>
     const _supabase = supabase.createClient('https://vqxdmmtashwloobkhbva.supabase.co', 'sb_publishable_seniB_T4zCgrkooZ-Ow9aQ_znLUwvLC');
     const params = new URLSearchParams(window.location.search);
-    const SEMANA = params.get('semana') || '6';
+    const SEMANA = params.get('semana') || '7';
     document.getElementById('lblSemana').innerText = SEMANA;
-
-    // Guardaremos los IDs originales de planificación para actualizar por ID, que es más rápido
-    let mapeoPlanificacion = [];
 
     async function cargarInforme() {
         const body = document.getElementById('bodyInforme');
         body.innerHTML = '<tr><td colspan="15" class="text-center py-5">Generando informe...</td></tr>';
 
         try {
-            const { data: daes } = await _supabase.from('reporte_daes').select('*').eq('semana', SEMANA);
+            // 1. Traemos la realidad del Cargo Plan (Los 105 que mencionas)
             const { data: planif } = await _supabase.from('distribucion_diaria').select('*').eq('semana', SEMANA);
+            // 2. Traemos la gestión de DAEs para cruzar datos
+            const { data: daes } = await _supabase.from('reporte_daes').select('*');
+            // 3. Traemos lo que ya se haya guardado en el informe final
             const { data: informePrevio } = await _supabase.from('informe_contenedores_final').select('*').eq('semana', SEMANA);
 
-            mapeoPlanificacion = planif || [];
-
             let html = "";
-            daes.forEach(d => {
-                const cantFilas = parseInt(d.cont || d.contenedor) || 1; 
-                const contenedoresAsignados = planif ? planif.filter(p => p.booking === d.booking) : [];
+            
+            // Usamos PLANIF como base para que salgan los 105 contenedores
+            planif.forEach((cReal, index) => {
+                const d = daes.find(dae => dae.booking === cReal.booking) || {};
+                const prev = (informePrevio || []).find(ip => ip.contenedor === cReal.contenedor) || {};
 
-                for (let i = 0; i < cantFilas; i++) {
-                    const cReal = contenedoresAsignados[i] || {};
-                    const prev = (informePrevio || []).find(ip => ip.booking === d.booking && ip.indice_fila === i) || {};
-
-                    html += `
-                        <tr data-booking="${d.booking}" data-indice="${i}" data-planid="${cReal.id || ''}">
-                            <td class="bg-readonly" data-campo="empresa">${d.empresa || ''}</td>
-                            <td contenteditable="true" data-campo="naviera">${prev.naviera || ''}</td>
-                            <td contenteditable="true" data-campo="marca">${prev.marca || cReal.marca || ''}</td>
-                            <td contenteditable="true" data-campo="vapor">${prev.vapor || d.barco || ''}</td>
-                            <td contenteditable="true" data-campo="dae">${prev.dae || d.dae || ''}</td>
-                            <td contenteditable="true" data-campo="aisv">${prev.aisv || ''}</td>
-                            <td contenteditable="true" data-campo="contenedor" class="text-blue">${prev.contenedor || cReal.contenedor || ''}</td>
-                            <td data-campo="booking">${d.booking}</td>
-                            <td contenteditable="true" data-campo="fecha_creacion">${prev.fecha_creacion || ''}</td>
-                            <td contenteditable="true" data-campo="fecha_puerto">${prev.fecha_puerto || ''}</td>
-                            <td contenteditable="true" data-campo="puerto">${prev.puerto || d.terminal || ''}</td>
-                            <td contenteditable="true" data-campo="destino">${prev.destino || d.destino || ''}</td>
-                            <td contenteditable="true" data-campo="cajas">${prev.cajas || cReal.cajas || ''}</td>
-                            <td contenteditable="true" data-campo="campo">${prev.campo || cReal.consolidacion || ''}</td>
-                            <td contenteditable="true" data-campo="observacion">${prev.observacion || ''}</td>
-                        </tr>
-                    `;
-                }
+                html += `
+                    <tr data-booking="${cReal.booking}" data-indice="${index}" data-planid="${cReal.id || ''}">
+                        <td class="bg-readonly" data-campo="empresa">${d.empresa || 'COMERSUR'}</td>
+                        <td contenteditable="true" data-campo="naviera">${prev.naviera || ''}</td>
+                        <td contenteditable="true" data-campo="marca">${prev.marca || cReal.marca || ''}</td>
+                        <td contenteditable="true" data-campo="vapor">${prev.vapor || cReal.vapor || d.barco || ''}</td>
+                        <td contenteditable="true" data-campo="dae">${prev.dae || d.dae || ''}</td>
+                        <td contenteditable="true" data-campo="aisv">${prev.aisv || ''}</td>
+                        <td contenteditable="true" data-campo="contenedor" class="text-blue">${cReal.contenedor || ''}</td>
+                        <td data-campo="booking">${cReal.booking || ''}</td>
+                        <td contenteditable="true" data-campo="fecha_creacion">${prev.fecha_creacion || ''}</td>
+                        <td contenteditable="true" data-campo="fecha_puerto">${prev.fecha_puerto || ''}</td>
+                        <td contenteditable="true" data-campo="puerto">${prev.puerto || cReal.terminal || d.terminal || ''}</td>
+                        <td contenteditable="true" data-campo="destino">${prev.destino || d.destino || ''}</td>
+                        <td contenteditable="true" data-campo="cajas">${prev.cajas || cReal.cajas || ''}</td>
+                        <td contenteditable="true" data-campo="campo">${prev.campo || cReal.consolidacion || ''}</td>
+                        <td contenteditable="true" data-campo="observacion">${prev.observacion || ''}</td>
+                    </tr>
+                `;
             });
+
             body.innerHTML = html || '<tr><td colspan="15" class="text-center">No hay datos.</td></tr>';
         } catch (err) {
             console.error(err);
@@ -133,9 +129,8 @@
             const marca = tr.querySelector('[data-campo="marca"]').innerText.trim();
             const puerto = tr.querySelector('[data-campo="puerto"]').innerText.trim();
             const cajasRaw = tr.querySelector('[data-campo="cajas"]').innerText.trim();
-            const cajasNum = (cajasRaw === "" || isNaN(cajasRaw)) ? null : parseInt(cajasRaw);
+            const cajasNum = (cajasRaw === "" || isNaN(cajasRaw.replace('.',''))) ? null : parseInt(cajasRaw.replace('.',''));
 
-            // Objeto para Informe Final
             registrosInforme.push({
                 semana: SEMANA,
                 booking: booking,
@@ -156,38 +151,28 @@
                 observacion: tr.querySelector('[data-campo="observacion"]').innerText.trim()
             });
 
-            // Sincronización con Planificación (distribucion_diaria)
-            // Solo si tenemos un ID de registro previo o un Contenedor
-            if (planId || contenedor) {
-                let p;
-                if (planId) {
-                    p = _supabase.from('distribucion_diaria').update({ vapor, marca, cajas: cajasNum, terminal: puerto, contenedor }).eq('id', planId);
-                } else {
-                    p = _supabase.from('distribucion_diaria').update({ vapor, marca, cajas: cajasNum, terminal: puerto }).eq('contenedor', contenedor);
-                }
-                promesasActualizacion.push(p);
+            if (planId) {
+                promesasActualizacion.push(
+                    _supabase.from('distribucion_diaria').update({ 
+                        vapor, marca, cajas: cajasNum, terminal: puerto 
+                    }).eq('id', planId)
+                );
             }
         });
 
         try {
-            // 1. Upsert masivo en Informe Final (Rápido)
-            const { error: errorInf } = await _supabase.from('informe_contenedores_final').upsert(registrosInforme, { onConflict: 'semana, booking, indice_fila' });
-            if (errorInf) throw errorInf;
-
-            // 2. Ejecutar actualizaciones en paralelo (Mucho más rápido)
+            await _supabase.from('informe_contenedores_final').upsert(registrosInforme, { onConflict: 'semana, booking, indice_fila' });
             await Promise.all(promesasActualizacion);
-
-            alert("¡Todo guardado con éxito!");
+            alert("¡Informe y Cargo Plan actualizados con éxito!");
         } catch (err) {
-            console.error(err);
-            alert("Error al guardar cambios: " + err.message);
+            alert("Error: " + err.message);
         } finally {
             btn.disabled = false;
             btn.innerHTML = '<i class="bi bi-cloud-arrow-up"></i> GUARDAR CAMBIOS';
         }
     }
 
-    // El resto de funciones (Flechas, Excel) se mantienen igual...
+    // Eventos de navegación
     document.getElementById('bodyInforme').addEventListener('keydown', function(e) {
         const cell = e.target;
         const row = cell.parentElement;
@@ -200,10 +185,6 @@
             if(e.key === "ArrowRight") cell.nextElementSibling?.focus();
             if(e.key === "ArrowLeft")  cell.previousElementSibling?.focus();
         }
-        if (e.key === "Enter") {
-            e.preventDefault();
-            this.rows[rowIndex + 1]?.cells[colIndex]?.focus();
-        }
     });
 
     function exportarExcel() {
@@ -212,7 +193,7 @@
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `Informe_Semana_${SEMANA}.xls`;
+        a.download = `Informe_Final_Semana_${SEMANA}.xls`;
         a.click();
     }
 
