@@ -10,10 +10,36 @@
         body { background: #f4f7f9; font-family: 'Segoe UI', sans-serif; }
         .navbar-custom { background: #1a237e; color: white; padding: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
         .category-title { color: #1a237e; font-weight: bold; border-bottom: 2px solid #1a237e; margin-top: 30px; margin-bottom: 20px; padding-bottom: 5px; text-transform: uppercase; font-size: 0.85rem; }
-        .menu-card { transition: 0.3s; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center; padding: 25px; border-radius: 12px; height: 100%; }
-        .menu-card:hover { transform: translateY(-5px); box-shadow: 0 8px 25px rgba(0,0,0,0.15); background: white; }
-        .icon-circle { width: 60px; height: 60px; background: #e8eaf6; color: #1a237e; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 15px auto; font-size: 2rem; }
+        
+        /* Estilo de tarjeta sin iconos */
+        .menu-card { 
+            transition: 0.3s; 
+            cursor: pointer; 
+            border: 1px solid #dee2e6; 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05); 
+            text-align: center; 
+            padding: 30px 15px; 
+            border-radius: 8px; 
+            height: 100%; 
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .menu-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1); 
+            border-color: #1a237e;
+            background: #f8f9ff;
+        }
+        .menu-card h6 { 
+            margin: 0; 
+            color: #333; 
+            font-size: 1rem; 
+            letter-spacing: 0.5px;
+        }
         .hidden { display: none !important; }
+        .badge-user { font-size: 0.9rem; padding: 8px 15px; border-radius: 20px; }
     </style>
 </head>
 <body>
@@ -21,42 +47,91 @@
 <div class="navbar-custom d-flex justify-content-between align-items-center">
     <h5 class="mb-0 fw-bold"><i class="bi bi-grid-3x3-gap-fill me-2"></i> CARGO PLAN - MENÚ</h5>
     <div>
-        <span id="userName" class="me-3 badge bg-light text-dark p-2 shadow-sm"></span>
+        <span id="userName" class="me-3 badge bg-light text-dark badge-user shadow-sm"></span>
         <button class="btn btn-outline-light btn-sm fw-bold px-3" onclick="logout()">CERRAR SESIÓN</button>
     </div>
 </div>
 
 <div class="container pb-5">
+    
     <div class="category-title">Operaciones</div>
     <div class="row g-3">
-        <div class="col-6 col-md-3 menu-item hidden" id="item_importar"><div class="card menu-card" onclick="window.location.href='diario.html'"><div class="icon-circle text-success"><i class="bi bi-file-earmark-arrow-up"></i></div><h6 class="fw-bold">Importar Datos</h6></div></div>
-        <div class="col-6 col-md-3 menu-item hidden" id="item_planificacion"><div class="card menu-card" onclick="window.location.href='planificacion_diaria.html'"><div class="icon-circle"><i class="bi bi-calendar-check"></i></div><h6 class="fw-bold">Planificación</h6></div></div>
-        <div class="col-6 col-md-3 menu-item hidden" id="item_daes"><div class="card menu-card" onclick="window.location.href='indaes.html'"><div class="icon-circle text-primary"><i class="bi bi-file-earmark-text"></i></div><h6 class="fw-bold">Gestión DAEs</h6></div></div>
-        <div class="col-6 col-md-3 menu-item hidden" id="item_ingresos"><div class="card menu-card" onclick="window.location.href='gestion.html'"><div class="icon-circle text-danger"><i class="bi bi-truck"></i></div><h6 class="fw-bold">Gestión Carga</h6></div></div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_importar">
+            <div class="card menu-card" onclick="window.location.href='diario.html'">
+                <h6 class="fw-bold">IMPORTAR DATOS</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_planificacion">
+            <div class="card menu-card" onclick="window.location.href='planificacion_diaria.html'">
+                <h6 class="fw-bold">PLANIFICACIÓN</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_daes">
+            <div class="card menu-card" onclick="window.location.href='indaes.html'">
+                <h6 class="fw-bold">GESTIÓN DAES</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_ingresos">
+            <div class="card menu-card" onclick="window.location.href='gestion.html'">
+                <h6 class="fw-bold">GESTIÓN CARGA</h6>
+            </div>
+        </div>
     </div>
 
     <div class="category-title">Informes y Cierre</div>
     <div class="row g-3">
-        <div class="col-6 col-md-3 menu-item hidden" id="item_formato365"><div class="card menu-card" onclick="window.location.href='formato365.html'"><div class="icon-circle text-primary"><i class="bi bi-file-earmark-bar-graph"></i></div><h6 class="fw-bold">Informe Cargo Plan</h6></div></div>
-        <div class="col-6 col-md-3 menu-item hidden" id="item_cargo_semanal"><div class="card menu-card" onclick="window.location.href='cargo_plan_semanal.html'"><div class="icon-circle text-info"><i class="bi bi-calendar3"></i></div><h6 class="fw-bold">Cargo Plan</h6></div></div>
-        <div class="col-6 col-md-3 menu-item hidden" id="item_cierre_semanal"><div class="card menu-card" onclick="window.location.href='cierre_semanal.html'"><div class="icon-circle text-dark"><i class="bi bi-lock-fill"></i></div><h6 class="fw-bold">Cierre Semanal</h6></div></div>
-        <div class="col-6 col-md-3 menu-item hidden" id="item_creditos"><div class="card menu-card" onclick="window.location.href='creditotpg.html'"><div class="icon-circle text-warning"><i class="bi bi-bank"></i></div><h6 class="fw-bold">Créditos TPG</h6></div></div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_formato365">
+            <div class="card menu-card" onclick="window.location.href='formato365.html'">
+                <h6 class="fw-bold">INFORME CARGO PLAN</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_cargo_semanal">
+            <div class="card menu-card" onclick="window.location.href='cargo_plan_semanal.html'">
+                <h6 class="fw-bold">CARGO PLAN</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_cierre_semanal">
+            <div class="card menu-card" onclick="window.location.href='cierre_semanal.html'">
+                <h6 class="fw-bold">CIERRE SEMANAL</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-3 menu-item hidden" id="item_creditos">
+            <div class="card menu-card" onclick="window.location.href='creditotpg.html'">
+                <h6 class="fw-bold">CRÉDITOS TPG</h6>
+            </div>
+        </div>
     </div>
 
-    <div class="category-title">Sistema</div>
+    <div class="category-title">Administración</div>
     <div class="row g-3">
-        <div class="col-6 col-md-4 menu-item hidden" id="item_consultas"><div class="card menu-card" onclick="window.location.href='consultas_ingresos.html'"><div class="icon-circle"><i class="bi bi-search"></i></div><h6 class="fw-bold">Consultas</h6></div></div>
-        <div class="col-6 col-md-4 menu-item hidden" id="item_limpieza"><div class="card menu-card" onclick="window.location.href='limpiezatota.html'"><div class="icon-circle text-secondary"><i class="bi bi-eraser-fill"></i></div><h6 class="fw-bold">Limpieza Total</h6></div></div>
-        <div class="col-6 col-md-4 menu-item hidden" id="item_config"><div class="card menu-card border border-primary bg-light" onclick="window.location.href='login.html'"><div class="icon-circle" style="background: #1a237e; color: white;"><i class="bi bi-gear-wide-connected"></i></div><h6 class="fw-bold">CONFIGURACIÓN</h6></div></div>
+        <div class="col-6 col-md-4 menu-item hidden" id="item_consultas">
+            <div class="card menu-card" onclick="window.location.href='consultas_ingresos.html'">
+                <h6 class="fw-bold">CONSULTAS</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 menu-item hidden" id="item_limpieza">
+            <div class="card menu-card" onclick="window.location.href='limpiezatota.html'">
+                <h6 class="fw-bold">LIMPIEZA TOTAL</h6>
+            </div>
+        </div>
+        <div class="col-6 col-md-4 menu-item hidden" id="item_config">
+            <div class="card menu-card border border-primary" onclick="window.location.href='login.html'">
+                <h6 class="fw-bold text-primary">CONFIGURACIÓN</h6>
+            </div>
+        </div>
     </div>
+
 </div>
 
 <script>
     document.addEventListener("DOMContentLoaded", () => {
         const userData = JSON.parse(localStorage.getItem('usuario_cargo_plan'));
         if (!userData) { window.location.href = "login.html"; return; }
+
         document.getElementById('userName').innerText = "HOLA, " + userData.usuario.toUpperCase();
+
         const p = userData.permisos || {};
+        
         if (p.importar) document.getElementById('item_importar').classList.remove('hidden');
         if (p.planificacion) document.getElementById('item_planificacion').classList.remove('hidden');
         if (p.daes) document.getElementById('item_daes').classList.remove('hidden');
@@ -67,9 +142,16 @@
         if (p.creditos) document.getElementById('item_creditos').classList.remove('hidden');
         if (p.consultas) document.getElementById('item_consultas').classList.remove('hidden');
         if (p.limpieza) document.getElementById('item_limpieza').classList.remove('hidden');
-        if (userData.rol === 'admin') document.getElementById('item_config').classList.remove('hidden');
+
+        if (userData.rol === 'admin') {
+            document.getElementById('item_config').classList.remove('hidden');
+        }
     });
-    function logout() { localStorage.removeItem('usuario_cargo_plan'); window.location.href = "login.html"; }
+
+    function logout() {
+        localStorage.removeItem('usuario_cargo_plan');
+        window.location.href = "login.html";
+    }
 </script>
 </body>
 </html>
