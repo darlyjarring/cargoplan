@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>COMERSUR | Cargo Plan Master Pro</title>
+    <title>SISTEMA | Cargo Plan Master Pro</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <style>
@@ -24,7 +24,7 @@
         .col-label { background: var(--header-bg); text-align: center; color: #666; height: 22px; }
         .header-9 { font-weight: bold; text-align: center; background: #f8f9fa; border: 1px solid #000 !important; white-space: normal; line-height: 1.2; }
         
-        .logo-box { position: absolute; top: 10px; left: 45px; background: #003366; color: white; padding: 5px 15px; font-weight: bold; font-size: 24px; z-index: 5; }
+        .logo-box { position: absolute; top: 10px; left: 45px; background: #003366; color: white; padding: 5px 15px; font-weight: bold; font-size: 24px; z-index: 5; text-transform: uppercase; }
         .tabs-footer { background: #f3f2f1; border-top: 1px solid var(--excel-border); display: flex; height: 35px; overflow-x: auto; }
         .tab-item { padding: 5px 20px; background: white; border-right: 1px solid var(--excel-border); font-size: 11px; cursor: pointer; display: flex; align-items: center; white-space: nowrap; }
         .tab-item.active { border-bottom: 3px solid var(--excel-selected); color: var(--excel-selected); font-weight: bold; background: #fff; }
@@ -35,17 +35,15 @@
 <div class="excel-toolbar">
     <input type="text" id="txtSemana" class="form-control form-control-sm w-auto" placeholder="Semana">
     <select id="selEmpresa" class="form-select form-select-sm w-auto">
-        <option value="">Seleccione Empresa...</option>
-        <option value="COMERSUR">COMERSUR</option>
-        <option value="BANANAS">BANANAS S.A.</option>
+        <option value="">Cargando empresas...</option>
     </select>
-    <button onclick="buscarDatos()" class="btn btn-sm btn-primary">Cargar Cargo Plan</button>
+    <button onclick="buscarDatos()" class="btn btn-sm btn-success fw-bold">CARGAR DATOS</button>
     <select id="selBuque" class="form-select form-select-sm w-auto" disabled onchange="cargarPuertos()"><option>Nave...</option></select>
     <select id="selPuerto" class="form-select form-select-sm w-auto" disabled onchange="generarTodo()"><option>Puerto...</option></select>
 </div>
 
 <div class="excel-viewport">
-    <div class="logo-box" id="displayEmpresa">COMERSUR</div>
+    <div class="logo-box" id="displayEmpresa">SISTEMA</div>
     <table id="excel-table">
         <thead><tr id="head-letters" class="col-label"></tr></thead>
         <tbody id="grid-body"></tbody>
@@ -60,18 +58,47 @@
     let fullData = [];
     let masterMap = {}; 
 
-    function init() {
+    async function init() {
         const head = document.getElementById('head-letters');
         const body = document.getElementById('grid-body');
         head.innerHTML = `<td></td>` + cols.map(c => `<td class="col-${c}">${c}</td>`).join('');
+        
         for (let i = 1; i <= 80; i++) {
             const tr = document.createElement('tr');
             tr.innerHTML = `<td class="row-label">${i}</td>` + 
                 cols.map(c => `<td id="cell-${i}-${c}" data-row="${i}" data-col="${c}" contenteditable="true" tabindex="0"></td>`).join('');
             body.appendChild(tr);
         }
+        
         dibujarEsqueleto();
         setupNavigation();
+        await cargarEmpresas(); // Llamada dinámica
+    }
+
+    // NUEVA FUNCIÓN: Consulta empresas únicas de la tabla reporte_daes
+    async function cargarEmpresas() {
+        const sel = document.getElementById('selEmpresa');
+        try {
+            const { data, error } = await _supabase
+                .from('reporte_daes')
+                .select('empresa');
+            
+            if (error) throw error;
+
+            // Extraer nombres únicos y filtrar nulos
+            const empresasUnicas = [...new Set(data.map(item => item.empresa))].filter(Boolean).sort();
+
+            sel.innerHTML = '<option value="">Seleccione Empresa...</option>';
+            empresasUnicas.forEach(emp => {
+                const opt = document.createElement('option');
+                opt.value = emp;
+                opt.innerText = emp;
+                sel.appendChild(opt);
+            });
+        } catch (err) {
+            console.error("Error cargando empresas:", err);
+            sel.innerHTML = '<option value="">Error al cargar</option>';
+        }
     }
 
     async function buscarDatos() {
@@ -81,32 +108,45 @@
 
         document.getElementById('displayEmpresa').innerText = emp;
 
-        // 1. Obtener Contenedores
+        // 1. Obtener Contenedores por semana
         const { data: contenedores } = await _supabase.from('distribucion_diaria').select('*').eq('semana', sem);
-        if (!contenedores) return;
+        if (!contenedores || contenedores.length === 0) return alert("No hay datos para esta semana");
 
-        // 2. Obtener DAEs
+        // 2. Obtener DAEs filtrando por la EMPRESA seleccionada
         const bookings = [...new Set(contenedores.map(c => c.booking))].filter(Boolean);
-        const { data: daes } = await _supabase.from('reporte_daes').select('*').in('booking', bookings).eq('empresa', emp);
+        const { data: daes } = await _supabase
+            .from('reporte_daes')
+            .select('*')
+            .in('booking', bookings)
+            .eq('empresa', emp);
 
         masterMap = {};
         if (daes) {
             daes.forEach(d => {
                 masterMap[d.booking.trim()] = {
                     dae: d.dae || '',
-                    cliente: d.cliente || d.marca || '', // Consignatario
+                    cliente: d.cliente || d.marca || '',
                     destino: d.puerto_destino || d.destino || ''
                 };
             });
         }
 
-        // Filtrar solo los contenedores que pertenecen a la empresa seleccionada vía DAE/Booking
+        // Filtrar contenedores que SI tengan un booking asociado a esa empresa en reporte_daes
         fullData = contenedores.filter(c => masterMap[c.booking?.trim()]);
+
+        if (fullData.length === 0) {
+            alert("No se encontraron registros de " + emp + " en la semana " + sem);
+            return;
+        }
 
         const buques = [...new Set(fullData.map(d => d.vapor || d.barco || d.nave))].filter(Boolean);
         const sel = document.getElementById('selBuque');
         sel.innerHTML = '<option>Nave...</option>' + buques.map(b => `<option value="${b}">${b}</option>`).join('');
         sel.disabled = false;
+        
+        // Resetear puerto
+        document.getElementById('selPuerto').disabled = true;
+        document.getElementById('selPuerto').innerHTML = '<option>Puerto...</option>';
     }
 
     function cargarPuertos() {
@@ -132,12 +172,10 @@
 
         const infoM = masterMap[datos[0].booking?.trim()] || {};
 
-        // CABECERA FIJA
         setCelda(5, 'B', 'VESSEL:', true); setCelda(5, 'C', document.getElementById('selBuque').value);
         setCelda(5, 'H', 'WEEK:', true);   setCelda(5, 'I', document.getElementById('txtSemana').value);
         setCelda(6, 'B', 'PORT:', true);   setCelda(6, 'C', document.getElementById('selPuerto').value);
         
-        // CONSIGNATARIO Y DESTINO (Visible en cabecera)
         setCelda(5, 'K', 'CLIENT:', true); setCelda(5, 'L', nombreTab === "MASTER" ? "VARIOUS" : infoM.cliente);
         setCelda(8, 'K', 'DESTINATION:', true); setCelda(8, 'L', nombreTab === "MASTER" ? "VARIOUS" : infoM.destino);
 
@@ -149,16 +187,13 @@
             setCelda(r, 'C', reg.cajas);
             setCelda(r, 'D', m.dae || ""); 
             setCelda(r, 'E', reg.booking);
-            
-            // SELLOS SEGÚN INDICACIONES PREVIAS
-            setCelda(r, 'F', reg.sello_nav);      // Naviera
-            setCelda(r, 'G', reg.sello_vent);     // Verificador
-            setCelda(r, 'H', reg.sello_sticker);  // Adhesivo
-            setCelda(r, 'I', reg.sello_tci);      // TCI
-            setCelda(r, 'J', reg.sello_sticker_nav); // Seguridad
-            
+            setCelda(r, 'F', reg.sello_nav);      
+            setCelda(r, 'G', reg.sello_vent);     
+            setCelda(r, 'H', reg.sello_sticker);  
+            setCelda(r, 'I', reg.sello_tci);      
+            setCelda(r, 'J', reg.sello_sticker_nav); 
             setCelda(r, 'K', reg.termografo);
-            setCelda(r, 'L', reg.marca);          // Marca / Consignatario en fila
+            setCelda(r, 'L', reg.marca);          
             setCelda(r, 'M', reg.observacion || "");
             setCelda(r, 'N', reg.fecha);
             setCelda(r, 'O', reg.codigo_productor);
@@ -169,38 +204,25 @@
     function crearTabs(datos) {
         const bar = document.getElementById('tabs-bar');
         bar.innerHTML = '';
-        
-        // 1. Pestaña MASTER
         const btnMaster = document.createElement('div');
         btnMaster.className = 'tab-item active';
         btnMaster.innerText = 'MASTER';
-        btnMaster.onclick = () => {
-            actualizarTabActiva(btnMaster);
-            limpiarYTabular(datos, "MASTER");
-        };
+        btnMaster.onclick = () => { actualizarTabActiva(btnMaster); limpiarYTabular(datos, "MASTER"); };
         bar.appendChild(btnMaster);
 
-        // 2. Agrupación por Consignatario(Cliente/Marca) + Destino
         const grupos = {};
         datos.forEach(r => {
             const m = masterMap[r.booking?.trim()] || {};
-            const clientName = m.cliente || "SIN_CLIENTE";
-            const destName = m.destino || "SIN_DESTINO";
-            const key = `${clientName} | ${destName}`;
-            
+            const key = `${m.cliente || "S/N"} | ${m.destino || "S/D"}`;
             if(!grupos[key]) grupos[key] = [];
             grupos[key].push(r);
         });
 
-        // 3. Crear pestañas únicas
         Object.keys(grupos).forEach(k => {
             const div = document.createElement('div');
             div.className = 'tab-item';
             div.innerText = k;
-            div.onclick = () => {
-                actualizarTabActiva(div);
-                limpiarYTabular(grupos[k], k);
-            };
+            div.onclick = () => { actualizarTabActiva(div); limpiarYTabular(grupos[k], k); };
             bar.appendChild(div);
         });
     }
@@ -211,7 +233,7 @@
     }
 
     function dibujarEsqueleto() {
-        const h = ["N°","Container Number","Amount Of Boxes","Dae","Booking","Naviera Seal","Verificador Seal","Adhesivo Seal","TCI Seal","Seguridad Seal","Thermograph","Brand / Client","Observations","Date","Code","Producer"];
+        const h = ["N°","Container Number","Boxes","Dae","Booking","Naviera Seal","Verificador Seal","Adhesivo Seal","TCI Seal","Seguridad Seal","Thermograph","Brand / Client","Observations","Date","Code","Producer"];
         h.forEach((t, i) => { const el = document.getElementById(`cell-9-${cols[i]}`); if(el){ el.innerText=t; el.className='header-9'; } });
     }
 
