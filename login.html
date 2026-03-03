@@ -12,8 +12,9 @@
         .login-container { max-width: 400px; margin: 80px auto; }
         .card-custom { border: none; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         .admin-panel { display: none; margin-top: 30px; }
-        .permiso-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid #eee; }
+        .permiso-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; border-bottom: 1px solid #eee; font-size: 13px; }
         .badge-admin { background: #1a237e; color: white; }
+        .scroll-permisos { max-height: 450px; overflow-y: auto; padding-right: 10px; }
     </style>
 </head>
 <body>
@@ -23,7 +24,7 @@
         <div class="text-center mb-4">
             <i class="bi bi-shield-lock-fill text-primary" style="font-size: 3rem;"></i>
             <h4 class="fw-bold">CARGO PLAN</h4>
-            <p class="text-muted small">Control de Acceso</p>
+            <p class="text-muted small">Control de Acceso Operativo</p>
         </div>
         <div class="mb-3">
             <label class="form-label small fw-bold">Usuario</label>
@@ -37,31 +38,31 @@
     </div>
 </div>
 
-<div id="sectionAdmin" class="container admin-panel">
+<div id="sectionAdmin" class="container admin-panel pb-5">
     <div class="card card-custom p-4">
         <div class="d-flex justify-content-between align-items-center mb-4 border-bottom pb-3">
             <h4 class="mb-0 fw-bold"><i class="bi bi-person-gear me-2"></i>Gestión de Usuarios</h4>
             <button class="btn btn-dark btn-sm" onclick="window.location.href='index.html'"><i class="bi bi-house-door"></i> IR AL MENÚ</button>
         </div>
         <div class="row">
-            <div class="col-md-5 border-end">
-                <h6 class="fw-bold mb-3 text-secondary">Seleccione un Usuario</h6>
+            <div class="col-md-4 border-end">
+                <h6 class="fw-bold mb-3 text-secondary">Usuarios Registrados</h6>
                 <div id="listaUsuarios" class="list-group list-group-flush"></div>
             </div>
-            <div class="col-md-7 ps-4">
+            <div class="col-md-8 ps-4">
                 <div id="configPermisos" style="display:none;">
                     <h5 class="fw-bold text-primary mb-3">Accesos para: <span id="nombreUserActivo"></span></h5>
-                    <div class="permiso-item">
-                        <span><i class="bi bi-bank me-2"></i>Créditos TPG</span>
-                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_creditos"></div>
-                    </div>
-                    <div class="permiso-item">
-                        <span><i class="bi bi-truck me-2"></i>Gestión de Carga</span>
-                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_ingresos"></div>
-                    </div>
-                    <div class="permiso-item">
-                        <span><i class="bi bi-search me-2"></i>Consultas</span>
-                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_consultas"></div>
+                    <div class="scroll-permisos">
+                        <div class="permiso-item"><span><i class="bi bi-file-earmark-arrow-up me-2"></i>Importar (diario.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_importar"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-calendar-check me-2"></i>Planificación (planificacion_diaria.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_planificacion"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-file-earmark-text me-2"></i>Gestión DAEs (indaes.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_daes"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-truck me-2"></i>Gestión Carga (gestion.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_ingresos"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-file-earmark-bar-graph me-2"></i>Informe Cargo Plan (formato365.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_formato365"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-calendar3 me-2"></i>Cargo Plan (cargo_plan_semanal.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_cargo_semanal"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-lock-fill me-2"></i>Cierre Semanal (cierre_semanal.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_cierre_semanal"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-bank me-2"></i>Créditos TPG (creditotpg.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_creditos"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-search me-2"></i>Consultas (consultas_ingresos.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_consultas"></div></div>
+                        <div class="permiso-item"><span><i class="bi bi-trash3 me-2"></i>Limpieza Total (limpiezatota.html)</span><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="p_limpieza"></div></div>
                     </div>
                     <button class="btn btn-success mt-4 fw-bold w-100" onclick="guardarPermisos()">GUARDAR CONFIGURACIÓN</button>
                 </div>
@@ -77,20 +78,14 @@
     async function login() {
         const user = document.getElementById('user').value;
         const pass = document.getElementById('pass').value;
-
         const { data, error } = await _supabase.from('usuarios').select('*').eq('usuario', user).eq('password', pass).maybeSingle();
-
         if (error || !data) { alert("Usuario o Contraseña incorrectos"); return; }
-
         localStorage.setItem('usuario_cargo_plan', JSON.stringify(data));
-
         if (data.rol === 'admin') {
             document.getElementById('sectionLogin').style.display = 'none';
             document.getElementById('sectionAdmin').style.display = 'block';
             cargarUsuarios();
-        } else {
-            window.location.href = "index.html"; 
-        }
+        } else { window.location.href = "index.html"; }
     }
 
     async function cargarUsuarios() {
@@ -111,17 +106,31 @@
         document.getElementById('configPermisos').style.display = 'block';
         document.getElementById('nombreUserActivo').innerText = u.usuario.toUpperCase();
         const p = u.permisos || {};
-        document.getElementById('p_creditos').checked = p.creditos || false;
+        document.getElementById('p_importar').checked = p.importar || false;
+        document.getElementById('p_planificacion').checked = p.planificacion || false;
+        document.getElementById('p_daes').checked = p.daes || false;
         document.getElementById('p_ingresos').checked = p.ingresos || false;
+        document.getElementById('p_formato365').checked = p.formato365 || false;
+        document.getElementById('p_cargo_semanal').checked = p.cargo_semanal || false;
+        document.getElementById('p_cierre_semanal').checked = p.cierre_semanal || false;
+        document.getElementById('p_creditos').checked = p.creditos || false;
         document.getElementById('p_consultas').checked = p.consultas || false;
+        document.getElementById('p_limpieza').checked = p.limpieza || false;
     }
 
     async function guardarPermisos() {
         if (!usuarioSeleccionadoId) return;
         const nuevosPermisos = {
-            creditos: document.getElementById('p_creditos').checked,
+            importar: document.getElementById('p_importar').checked,
+            planificacion: document.getElementById('p_planificacion').checked,
+            daes: document.getElementById('p_daes').checked,
             ingresos: document.getElementById('p_ingresos').checked,
-            consultas: document.getElementById('p_consultas').checked
+            formato365: document.getElementById('p_formato365').checked,
+            cargo_semanal: document.getElementById('p_cargo_semanal').checked,
+            cierre_semanal: document.getElementById('p_cierre_semanal').checked,
+            creditos: document.getElementById('p_creditos').checked,
+            consultas: document.getElementById('p_consultas').checked,
+            limpieza: document.getElementById('p_limpieza').checked
         };
         const { error } = await _supabase.from('usuarios').update({ permisos: nuevosPermisos }).eq('id', usuarioSeleccionadoId);
         if (!error) { alert("¡Permisos actualizados!"); cargarUsuarios(); }
